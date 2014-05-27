@@ -28,6 +28,9 @@ import scala.Some
 import java.util.logging.Level
 import org.bdgenomics.adam.models.{ RecordGroupDictionary, SequenceDictionary }
 import org.bdgenomics.adam.converters.SAMRecordConverter
+import org.bdgenomics.adam.instrumentation.Timers.{ Bam2ADAMOverall, WriteADAMRecord }
+import com.codahale.metrics.ConsoleReporter
+import org.bdgenomics.adam.instrumentation.Instrumentation.GlobalMetricRegistry
 
 object Bam2ADAM extends ADAMCommandCompanion {
   val commandName: String = "bam2adam"
@@ -49,6 +52,8 @@ class Bam2ADAMArgs extends Args4jBase with ParquetArgs {
   var numThreads = 4
   @Args4jOption(required = false, name = "-queue_size", usage = "Queue size (default = 10,000)")
   var qSize = 10000
+  @Args4jOption(required = false, name = "-print_metrics", usage = "Print metrics on completion")
+  var printMetrics = false
 }
 
 class Bam2ADAM(args: Bam2ADAMArgs) extends ADAMCommand {
@@ -82,7 +87,10 @@ class Bam2ADAM(args: Bam2ADAMArgs) extends ADAMCommand {
                     // Exit
                     return
                   case Some((samRecord, seqDict, rgDict)) =>
-                    parquetWriter.write(samRecordConverter.convert(samRecord, seqDict, rgDict))
+                    val converted = samRecordConverter.convert(samRecord, seqDict, rgDict)
+                    WriteADAMRecord.time {
+                      parquetWriter.write(converted)
+                    }
                 }
               }
             } catch {
@@ -98,7 +106,19 @@ class Bam2ADAM(args: Bam2ADAMArgs) extends ADAMCommand {
   }
 
   def run() = {
+    runBam2ADAM()
+    if (args.printMetrics) {
+      val registry = GlobalMetricRegistry
+      val reporter = ConsoleReporter.forRegistry(registry)
+        .convertRatesTo(TimeUnit.SECONDS)
+        .convertDurationsTo(TimeUnit.MILLISECONDS)
+        .build()
+      reporter.report(registry.getGauges, registry.getCounters, registry.getHistograms,
+        registry.getMeters, registry.getTimers)
+    }
+  }
 
+  def runBam2ADAM() = Bam2ADAMOverall.time {
     val samReader = new SAMFileReader(new File(args.bamFile), null, true)
     samReader.setValidationStringency(args.validationStringency)
 
@@ -124,5 +144,6 @@ class Bam2ADAM(args: Bam2ADAMArgs) extends ADAMCommand {
     System.out.flush()
     println("\nFinished! Converted %d reads total.".format(i))
   }
+
 }
 

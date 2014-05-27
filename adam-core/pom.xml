@@ -143,5 +143,13 @@
             <artifactId>scalatest_${scala.artifact.suffix}</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.codahale.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>nl.grons</groupId>
+            <artifactId>metrics-scala_${scala.artifact.suffix}</artifactId>
+        </dependency>
     </dependencies>
 </project>
