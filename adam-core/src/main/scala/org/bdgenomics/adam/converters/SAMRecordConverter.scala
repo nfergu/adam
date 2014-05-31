@@ -21,9 +21,10 @@ import org.bdgenomics.adam.avro.ADAMRecord
 import scala.collection.JavaConverters._
 import org.bdgenomics.adam.models.{ SequenceRecord, Attribute, RecordGroupDictionary, SequenceDictionary }
 import org.bdgenomics.adam.util.AttributeUtils
+import org.bdgenomics.adam.instrumentation.Timers.ConvertSAMRecord
 
 class SAMRecordConverter extends Serializable {
-  def convert(samRecord: SAMRecord, dict: SequenceDictionary, readGroups: RecordGroupDictionary): ADAMRecord = {
+  def convert(samRecord: SAMRecord, dict: SequenceDictionary, readGroups: RecordGroupDictionary): ADAMRecord = ConvertSAMRecord.time {
 
     val builder: ADAMRecord.Builder = ADAMRecord.newBuilder
       .setReadName(samRecord.getReadName)

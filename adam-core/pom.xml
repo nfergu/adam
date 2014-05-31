@@ -143,5 +143,9 @@
             <artifactId>scalatest_${scala.artifact.suffix}</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.netflix.servo</groupId>
+            <artifactId>servo-core</artifactId>
+        </dependency>
     </dependencies>
 </project>
