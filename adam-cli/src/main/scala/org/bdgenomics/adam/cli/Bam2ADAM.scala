@@ -24,13 +24,10 @@ import java.io.File
 import parquet.avro.AvroParquetWriter
 import org.apache.hadoop.fs.Path
 import java.util.concurrent._
+import scala.Some
 import java.util.logging.Level
 import org.bdgenomics.adam.models.{ RecordGroupDictionary, SequenceDictionary }
 import org.bdgenomics.adam.converters.SAMRecordConverter
-import org.bdgenomics.adam.instrumentation.Timers.{ Bam2ADAMOverall, WriteADAMRecord }
-import scala.Some
-import com.netflix.servo.DefaultMonitorRegistry
-import com.netflix.servo.monitor.BucketTimer
 
 object Bam2ADAM extends ADAMCommandCompanion {
   val commandName: String = "bam2adam"
@@ -52,8 +49,6 @@ class Bam2ADAMArgs extends Args4jBase with ParquetArgs {
   var numThreads = 4
   @Args4jOption(required = false, name = "-queue_size", usage = "Queue size (default = 10,000)")
   var qSize = 10000
-  @Args4jOption(required = false, name = "-print_metrics", usage = "Print metrics on completion")
-  var printMetrics = false
 }
 
 class Bam2ADAM(args: Bam2ADAMArgs) extends ADAMCommand {
@@ -87,10 +82,7 @@ class Bam2ADAM(args: Bam2ADAMArgs) extends ADAMCommand {
                     // Exit
                     return
                   case Some((samRecord, seqDict, rgDict)) =>
-                    val converted = samRecordConverter.convert(samRecord, seqDict, rgDict)
-                    WriteADAMRecord.time {
-                      parquetWriter.write(converted)
-                    }
+                    parquetWriter.write(samRecordConverter.convert(samRecord, seqDict, rgDict))
                 }
               }
             } catch {
@@ -106,23 +98,7 @@ class Bam2ADAM(args: Bam2ADAMArgs) extends ADAMCommand {
   }
 
   def run() = {
-    runBam2ADAM()
-    if (args.printMetrics) {
-      DefaultMonitorRegistry.getInstance().getRegisteredMonitors.foreach {
-        // Only deal with BucketTimers for now.
-        // There's must be a nicer way to write these out too.
-        case timer: BucketTimer =>
-          println()
-          println(timer.getConfig.getName)
-          timer.getMonitors.foreach(subMonitor => {
-            println("name=" + subMonitor.getConfig.getName + " tags=" +
-              subMonitor.getConfig.getTags + " value=" + subMonitor.getValue)
-          })
-      }
-    }
-  }
 
-  def runBam2ADAM() = Bam2ADAMOverall.time {
     val samReader = new SAMFileReader(new File(args.bamFile), null, true)
     samReader.setValidationStringency(args.validationStringency)
 

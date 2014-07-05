@@ -51,6 +51,7 @@ import scala.collection.Map
 import org.bdgenomics.adam.util.HadoopUtil
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat
 import org.bdgenomics.adam.predicates.ADAMPredicate
+import org.bdgenomics.adam.instrumentation.ADAMMetricsListener
 
 object ADAMContext {
   // Add ADAM Spark context methods
@@ -109,6 +110,7 @@ object ADAMContext {
    * @param sparkEnvVars Environment variables to set.
    * @param sparkAddStatsListener Disabled by default; true enables. If enabled, a job status
    *                              listener is registered. This can be useful for performance debug.
+   * @param sparkMetricsListener A listener for recording metrics from Spark. Not set by default.
    * @param sparkKryoBufferSize Size of the object serialization buffer. Default setting is 4MB.
    * @return Returns a properly configured Spark Context.
    */
@@ -119,6 +121,7 @@ object ADAMContext {
                          sparkEnvVars: Seq[(String, String)] = Nil,
                          sparkAddStatsListener: Boolean = false,
                          sparkKryoBufferSize: Int = 4,
+                         sparkMetricsListener: Option[ADAMMetricsListener] = None,
                          loadSystemValues: Boolean = true,
                          sparkDriverPort: Option[Int] = None): SparkContext = {
     // TODO: Add enough spark arguments so that we don't need to load the system values (e.g. SPARK_MEM)
@@ -147,6 +150,8 @@ object ADAMContext {
     if (sparkAddStatsListener) {
       sc.addSparkListener(new StatsReportListener)
     }
+
+    sparkMetricsListener.foreach(sc.addSparkListener(_))
 
     sc
   }

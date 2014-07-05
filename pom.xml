@@ -252,6 +252,11 @@
             <id>hadoop-bam</id>
             <url>http://hadoop-bam.sourceforge.net/maven/</url>
         </repository>
+        <repository>
+            <id>project.local</id>
+            <name>project</name>
+            <url>file:${basedir}/../repo</url>
+        </repository>
     </repositories>
 
     <dependencyManagement>
@@ -366,6 +371,11 @@
                 <groupId>com.netflix.servo</groupId>
                 <artifactId>servo-core</artifactId>
                 <version>0.5.5</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bethecoder.ascii_table</groupId>
+                <artifactId>btc-ascii-table</artifactId>
+                <version>1.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
