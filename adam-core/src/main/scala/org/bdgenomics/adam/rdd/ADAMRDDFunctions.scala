@@ -65,6 +65,7 @@ import org.apache.spark.Logging
 import java.io.File
 import java.util.logging.Level
 import scala.Some
+import org.bdgenomics.adam.instrumentation.Timers
 
 class ADAMRDDFunctions[T <% SpecificRecord: Manifest](rdd: RDD[T]) extends Serializable {
 
@@ -323,7 +324,7 @@ class AlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSequenc
     }).sortByKey().map(p => p._2)
   }
 
-  def adamMarkDuplicates(): RDD[AlignmentRecord] = {
+  def adamMarkDuplicates()(implicit timers: Timers): RDD[AlignmentRecord] = {
     MarkDuplicates(rdd)
   }
 

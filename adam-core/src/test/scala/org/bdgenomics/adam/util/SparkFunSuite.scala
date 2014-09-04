@@ -22,11 +22,15 @@ import org.apache.spark.SparkContext
 import java.net.ServerSocket
 import org.apache.log4j.Level
 import org.bdgenomics.adam.rdd.ADAMContext
+import org.bdgenomics.adam.instrumentation.NoOpTimers
 
 trait SparkFunSuite extends FunSuite with BeforeAndAfter {
 
   var sc: SparkContext = _
   var maybeLevels: Option[Map[String, Level]] = None
+
+  // TODO NF: Probably should use the real one rather than the mock one here
+  implicit val timers = new NoOpTimers()
 
   def setupSparkContext(sparkName: String, silenceSpark: Boolean = true) {
     // Silence the Spark logs if requested
