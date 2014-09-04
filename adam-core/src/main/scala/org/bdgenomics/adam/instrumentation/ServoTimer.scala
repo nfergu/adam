@@ -39,9 +39,11 @@ import java.util.concurrent.TimeUnit._
  *
  * @param config the config for this timer; this config is propagated to sub-monitors
  */
-class ServoTimer(config: MonitorConfig) extends CompositeMonitor[Object] with Taggable {
+class ServoTimer(@transient config: MonitorConfig) extends CompositeMonitor[Object] with Taggable with Serializable {
 
-  private var baseConfig: MonitorConfig =
+  // TODO NF: We need to be able to to serialize the config when running in distributed mode
+
+  @transient private var baseConfig: MonitorConfig =
     config.withAdditionalTag(newTag(TimeUnitTagKey, NANOSECONDS.name())).
       withAdditionalTag(newTag(NameTagKey, config.getName))
 
@@ -50,6 +52,7 @@ class ServoTimer(config: MonitorConfig) extends CompositeMonitor[Object] with Ta
 
   private val totalTimeMonitor = new LongValueStatMonitor(withTag(TotalTimeTag), () => totalTimeNanos.longValue())
   private val countMonitor = new LongValueStatMonitor(withTag(CountTag), () => count.longValue())
+
   private val meanMonitor = new LongValueStatMonitor(withTag(MeanTag), () => {
     if (count.longValue() > 0) {
       (totalTimeNanos.doubleValue() / count.doubleValue()).toLong
@@ -122,6 +125,16 @@ class ServoTimer(config: MonitorConfig) extends CompositeMonitor[Object] with Ta
   }
 
   /**
+   * Merges the passed-in [[ServoTimer]] into this one. Note that the config is not merged (only the recorded statistics).
+   */
+  def merge(mergeWith: ServoTimer) {
+    totalTimeNanos.getAndAdd(mergeWith.totalTimeNanos.get())
+    count.getAndAdd(mergeWith.count.get())
+    minMonitor.record(mergeWith.minMonitor.getValue)
+    maxMonitor.record(mergeWith.maxMonitor.getValue)
+  }
+
+  /**
    * Adds the passed-in tag to the config for this timer, and its sub-monitors
    */
   override def addTag(tag: Tag) {
@@ -148,7 +161,8 @@ class ServoTimer(config: MonitorConfig) extends CompositeMonitor[Object] with Ta
     baseConfig.withAdditionalTag(tag)
   }
 
-  private class LongValueStatMonitor(var config: MonitorConfig, function: () => Long) extends Monitor[Long] with Taggable {
+  private class LongValueStatMonitor(@transient var config: MonitorConfig, function: () => Long) extends Monitor[Long]
+      with Taggable with Serializable {
     override def getValue: Long = {
       function.apply()
     }
@@ -160,7 +174,8 @@ class ServoTimer(config: MonitorConfig) extends CompositeMonitor[Object] with Ta
     }
   }
 
-  private class ConditionalGauge(var config: MonitorConfig, condition: (Long, Long) => Boolean) extends Gauge[java.lang.Long] with Taggable {
+  private class ConditionalGauge(@transient var config: MonitorConfig, condition: (Long, Long) => Boolean) extends Gauge[java.lang.Long]
+      with Taggable with Serializable {
     // This is always set inside a lock but read outside it, so it needs to be volatile
     @volatile var set: Boolean = false
     val value: AtomicLong = new AtomicLong()
