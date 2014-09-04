@@ -22,11 +22,11 @@ import com.netflix.servo.monitor.{ Monitor, LongGauge, MonitorConfig }
 import java.io.PrintStream
 import scala.collection.mutable.ArrayBuffer
 import com.netflix.servo.tag.Tags.newTag
-import org.bdgenomics.adam.instrumentation.ServoTimer._
 import org.bdgenomics.adam.instrumentation.ValueExtractor._
 import com.netflix.servo.tag.Tag
 import org.bdgenomics.adam.instrumentation.SparkMetrics._
 import scala.concurrent.duration._
+import org.bdgenomics.adam.instrumentation.InstrumentationFunctions.{ createTaskHeader, renderTable, formatNanos }
 
 /**
  * Allows metrics for Spark to be captured and rendered in tabular form.
@@ -130,12 +130,6 @@ abstract class SparkMetrics {
     stageId + ": " + stageName.getOrElse("unknown")
   }
 
-  private def renderTable(out: PrintStream, name: String, timers: Seq[Monitor[_]], header: ArrayBuffer[TableHeader]) = {
-    val monitorTable = new MonitorTable(header.toArray, timers.toArray)
-    out.println(name)
-    monitorTable.print(out)
-  }
-
   private def createHeaderWith(header: TableHeader, position: Int): ArrayBuffer[TableHeader] = {
     val baseHeader = createTaskHeader()
     baseHeader.insert(position, header)
@@ -146,24 +140,6 @@ abstract class SparkMetrics {
     ArrayBuffer(
       TableHeader(name = "Stage ID & Name", valueExtractor = forTagValueWithKey(StageNameTagKey), alignment = Alignment.Left),
       TableHeader(name = "Duration", valueExtractor = forMonitorValue(), formatFunction = Some(formatNanos)))
-  }
-
-  private def createTaskHeader(): ArrayBuffer[TableHeader] = {
-    ArrayBuffer(
-      TableHeader(name = "Metric", valueExtractor = forTagValueWithKey(NameTagKey), alignment = Alignment.Left),
-      TableHeader(name = "Total Time", valueExtractor = forMonitorMatchingTag(TotalTimeTag), formatFunction = Some(formatNanos)),
-      TableHeader(name = "Count", valueExtractor = forMonitorMatchingTag(CountTag)),
-      TableHeader(name = "Mean", valueExtractor = forMonitorMatchingTag(MeanTag), formatFunction = Some(formatNanos)),
-      TableHeader(name = "Min", valueExtractor = forMonitorMatchingTag(MinTag), formatFunction = Some(formatNanos)),
-      TableHeader(name = "Max", valueExtractor = forMonitorMatchingTag(MaxTag), formatFunction = Some(formatNanos)))
-  }
-
-  private def formatNanos(number: Any): String = {
-    // We need to do some dynamic type checking here, as monitors return an Object
-    number match {
-      case number: Number => DurationFormatting.formatNanosecondDuration(number)
-      case _              => throw new IllegalArgumentException("Cannot format non-numeric value [" + number + "]")
-    }
   }
 
 }
