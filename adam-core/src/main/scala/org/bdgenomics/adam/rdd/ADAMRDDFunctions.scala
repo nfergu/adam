@@ -31,6 +31,7 @@ import parquet.avro.AvroParquetOutputFormat
 import parquet.hadoop.ParquetOutputFormat
 import parquet.hadoop.metadata.CompressionCodecName
 import parquet.hadoop.util.ContextUtil
+import org.bdgenomics.adam.instrumentation.Metrics
 
 trait ADAMParquetArgs {
   var blockSize: Int
@@ -79,6 +80,46 @@ class ADAMRDDFunctions[T <% SpecificRecord: Manifest](rdd: RDD[T]) extends Seria
     recordToSave.saveAsNewAPIHadoopFile(filePath,
       classOf[java.lang.Void], manifest[T].runtimeClass.asInstanceOf[Class[T]], classOf[AvroParquetOutputFormat],
       ContextUtil.getConfiguration(job))
+  }
+
+}
+
+class ADAMMetricsRDDFunctions[T](rdd: RDD[T]) extends Serializable {
+
+  def adamGroupBy[K](f: scala.Function1[T, K])(implicit kt: scala.reflect.ClassTag[K]): org.apache.spark.rdd.RDD[scala.Tuple2[K, scala.Iterable[T]]] = {
+    val registryOption = Metrics.Registry.value
+    rdd.groupBy((t: T) => {
+      Metrics.Registry.withValue(registryOption) {
+        f(t)
+      }
+    })
+  }
+
+  def adamMap[U](f: scala.Function1[T, U])(implicit evidence$3: scala.reflect.ClassTag[U]): org.apache.spark.rdd.RDD[U] = {
+    val registryOption = Metrics.Registry.value
+    rdd.map((t: T) => {
+      Metrics.Registry.withValue(registryOption) {
+        f(t)
+      }
+    })
+  }
+
+  def adamKeyBy[K](f: scala.Function1[T, K]): org.apache.spark.rdd.RDD[scala.Tuple2[K, T]] = {
+    val registryOption = Metrics.Registry.value
+    rdd.keyBy((t: T) => {
+      Metrics.Registry.withValue(registryOption) {
+        f(t)
+      }
+    })
+  }
+
+  def adamFlatMap[U](f: scala.Function1[T, scala.TraversableOnce[U]])(implicit evidence$4: scala.reflect.ClassTag[U]): org.apache.spark.rdd.RDD[U] = {
+    val registryOption = Metrics.Registry.value
+    rdd.flatMap((t: T) => {
+      Metrics.Registry.withValue(registryOption) {
+        f(t)
+      }
+    })
   }
 
 }

@@ -8,59 +8,82 @@ import com.netflix.servo.monitor.MonitorConfig
 import java.io.PrintStream
 import scala.collection.mutable
 import org.bdgenomics.adam.instrumentation.InstrumentationFunctions._
+import scala.util.DynamicVariable
 
-class Metrics(accumulableRegistry: AccumulableRegistry, @transient sparkContext: SparkContext) extends Serializable {
+class Metrics extends Serializable {
 
-  private val AdamTimerPrefix = "ADAM Timer: "
+  // TODO NF: Add something to turn off metrics recording entirely
 
+  private val adamTimerPrefix = "ADAM Timer: "
+
+  private val timers = new mutable.ArrayBuffer[Timer]()
   private val timerAccumulables = new mutable.ArrayBuffer[Accumulable[ServoTimer, Long]]()
+
+  @volatile private var initialized = false
 
   private implicit val accumulableParam = new TimingAccumulableParam()
 
+  def initialize(sparkContext: SparkContext) = synchronized {
+    val metricsRegistry = new MetricsRegistry()
+    Metrics.Registry.value = Some(metricsRegistry)
+    timers.foreach(timer => {
+      val accumulable = sparkContext.accumulable[ServoTimer, Long](new ServoTimer(MonitorConfig.builder(timer.name).build()), timer.accumulableName)
+      metricsRegistry.putTimer(timer.accumulableName, accumulable)
+      timerAccumulables += accumulable
+    })
+    initialized = true
+  }
+
   def timer(name: String): Timer = {
-    val accumulableName = AdamTimerPrefix + name
-    val timer = new Timer(name, accumulableName, accumulableRegistry)
-    val accumulable = sparkContext.accumulable[ServoTimer, Long](new ServoTimer(MonitorConfig.builder(name).build()))
-    accumulableRegistry.put(accumulableName, accumulable)
-    timerAccumulables += accumulable
+    val accumulableName = adamTimerPrefix + name
+    val timer = new Timer(name, accumulableName)
+    timers += timer
     timer
   }
 
   def print(out: PrintStream) {
+    if (!initialized) {
+      throw new IllegalStateException("Trying to print metrics for an uninitialized Metrics class! " +
+        "Call the initialize method to initialize it.")
+    }
     val servoTimers = timerAccumulables.map(_.value)
     renderTable(out, "ADAM Timings", servoTimers, createTaskHeader())
   }
 
 }
 
-class Timer(name: String, accumulableName: String, accumulableRegistry: AccumulableRegistry) extends Serializable {
+class Timer(val name: String, val accumulableName: String) extends Serializable {
   /**
    * Runs f, recording its duration, and returns its result.
    */
   def time[A](f: => A): A = {
-    // This cast should be safe, since we enforce that only accumulables of this particular
-    // type are put in the registry with the specified name
-    val option = accumulableRegistry.get(accumulableName)
-    if (option.isDefined) {
-      val accumulable = option.get.asInstanceOf[Accumulable[ServoTimer, Long]]
-      val startTime = System.nanoTime()
-      try {
-        f
-      } finally {
-        accumulable += (System.nanoTime() - startTime)
-      }
-    } else {
-      f
-    }
+    Metrics.Registry.value.foreach(registry => {
+      registry.getTimer(accumulableName).foreach(e => {
+        // This cast should be safe, since we enforce that only accumulables of this particular
+        // type are put in the registry with the specified name
+        val accumulable = e.asInstanceOf[Accumulable[ServoTimer, Long]]
+        val startTime = System.nanoTime()
+        try {
+          return f
+        } finally {
+          accumulable += (System.nanoTime() - startTime)
+        }
+      })
+    })
+    f
   }
 }
 
-class AccumulableRegistry extends Serializable {
-  private val accumulableMap: Map[String, Accumulable[_, _]] = new ConcurrentHashMap[String, Accumulable[_, _]]()
-  def put(name: String, value: Accumulable[_, _]) = {
-    accumulableMap.put(name, value)
+class MetricsRegistry extends Serializable {
+  private val timerMap: Map[String, Accumulable[_, _]] = new ConcurrentHashMap[String, Accumulable[_, _]]()
+  def putTimer(name: String, value: Accumulable[_, _]) = {
+    timerMap.put(name, value)
   }
-  def get(name: String): Option[Accumulable[_, _]] = {
-    accumulableMap.get(name)
+  def getTimer(name: String): Option[Accumulable[_, _]] = {
+    timerMap.get(name)
   }
+}
+
+object Metrics {
+  final val Registry = new DynamicVariable[Option[MetricsRegistry]](None)
 }
