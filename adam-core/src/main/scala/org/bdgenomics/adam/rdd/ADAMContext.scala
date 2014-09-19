@@ -50,6 +50,9 @@ object ADAMContext {
   // Add generic RDD methods for all types of ADAM RDDs
   implicit def rddToADAMRDD[T <% SpecificRecord: Manifest](rdd: RDD[T]) = new ADAMRDDFunctions(rdd)
 
+  // Add RDD methods for recording metrics
+  implicit def rddToMetricsRDD[T](rdd: RDD[T]) = new ADAMMetricsRDDFunctions(rdd)
+
   // Add implicits for the rich adam objects
   implicit def recordToRichRecord(record: AlignmentRecord): RichAlignmentRecord = new RichAlignmentRecord(record)
 

@@ -22,11 +22,11 @@ import org.bdgenomics.adam.models.{ SingleReadBucket, ReferencePositionPair, Ref
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.adam.rdd.read.ADAMAlignmentRecordContext._
 import org.bdgenomics.formats.avro.AlignmentRecord
-import org.bdgenomics.adam.instrumentation.Timers
+import org.bdgenomics.adam.instrumentation.Timers._
 
 private[rdd] object MarkDuplicates extends Serializable {
 
-  def markReads(buckets: Seq[SingleReadBucket], areDups: Boolean)(implicit timers: Timers): Seq[SingleReadBucket] = timers.markReads.time {
+  def markReads(buckets: Seq[SingleReadBucket], areDups: Boolean): Seq[SingleReadBucket] = MarkReads.time {
     for (bucket <- buckets; read <- bucket.primaryMapped ++ bucket.secondaryMapped) {
       read.setDuplicateRead(areDups)
     }
@@ -41,7 +41,7 @@ private[rdd] object MarkDuplicates extends Serializable {
     record.qualityScores.filter(15 <=).sum
   }
 
-  def scoreAndMarkReads(buckets: Seq[SingleReadBucket])(implicit timers: Timers): Seq[SingleReadBucket] = timers.scoreAndMarkReads.time {
+  def scoreAndMarkReads(buckets: Seq[SingleReadBucket]): Seq[SingleReadBucket] = ScoreAndMarkReads.time {
     val scoredBuckets = buckets.map(p => (p.primaryMapped.map(score).sum, p))
     val sortedBuckets = scoredBuckets.sortBy(_._1)(Ordering[Int].reverse)
 
@@ -59,7 +59,7 @@ private[rdd] object MarkDuplicates extends Serializable {
     buckets
   }
 
-  def apply(rdd: RDD[AlignmentRecord])(implicit timers: Timers): RDD[AlignmentRecord] = {
+  def apply(rdd: RDD[AlignmentRecord]): RDD[AlignmentRecord] = {
     // Group by library and left position
     def leftPositionAndLibrary(p: (ReferencePositionPair, SingleReadBucket)): (Option[ReferencePositionWithOrientation], CharSequence) = {
       (p._1.read1refPos, p._2.allReads.head.getRecordGroupLibrary)
@@ -70,8 +70,8 @@ private[rdd] object MarkDuplicates extends Serializable {
       p._1.read2refPos
     }
 
-    rdd.adamSingleReadBuckets().keyBy(ReferencePositionPair(_)).groupBy(leftPositionAndLibrary)
-      .flatMap(kv => timers.performDuplicateMarking.time {
+    rdd.adamSingleReadBuckets().adamKeyBy(ReferencePositionPair(_)).adamGroupBy(leftPositionAndLibrary)
+      .adamFlatMap(kv => PerformDuplicateMarking.time {
         val ((leftPos, library), readsByLeftPos) = kv
 
         val buckets = leftPos match {
