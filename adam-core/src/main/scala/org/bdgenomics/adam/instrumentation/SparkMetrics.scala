@@ -174,10 +174,10 @@ class TaskTimer(name: String) {
     timer.recordMillis(milliSecondTiming)
   }
   private def buildTimer(name: String): ServoTimer = {
-    new ServoTimer(MonitorConfig.builder(name).build())
+    new ServoTimer(name)
   }
   private def buildTimer(name: String, tag: Tag): ServoTimer = {
-    new ServoTimer(MonitorConfig.builder(name).withTag(tag).build())
+    new ServoTimer(name, tag)
   }
 }
 

@@ -107,7 +107,7 @@ class ServoTimerSuite extends FunSuite {
   }
 
   def createTimer(): ServoTimer = {
-    new ServoTimer(MonitorConfig.builder("testTimer").build())
+    new ServoTimer("testTimer")
   }
 
 }

@@ -23,9 +23,11 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConversions._
 import com.netflix.servo.tag.Tags.newTag
-import com.netflix.servo.tag.Tag
+import com.netflix.servo.tag.{Tags, Tag}
 import org.bdgenomics.adam.instrumentation.ServoTimer._
+import scala.collection.mutable
 import java.util.concurrent.TimeUnit._
+import java.io.ObjectInputStream
 
 /**
  * Timer that implements the [[com.netflix.servo.monitor.CompositeMonitor]] interface.
@@ -37,33 +39,32 @@ import java.util.concurrent.TimeUnit._
  * - Min: [[ServoTimer.MinTag]]
  * All timings are returned in nanoseconds.
  *
- * @param config the config for this timer; this config is propagated to sub-monitors
+ * @param name the name of this timer; this is propagated to sub-monitors
+ * @param tags the tags for this timer; these are propagated to sub-monitors
  */
-class ServoTimer(@transient config: MonitorConfig) extends CompositeMonitor[Object] with Taggable with Serializable {
-
-  // TODO NF: We need to be able to to serialize the config when running in distributed mode
-
-  @transient private var baseConfig: MonitorConfig =
-    config.withAdditionalTag(newTag(TimeUnitTagKey, NANOSECONDS.name())).
-      withAdditionalTag(newTag(NameTagKey, config.getName))
+class ServoTimer(name: String, @transient tags: Tag*) extends ConfigurableMonitor(name, tags)
+    with CompositeMonitor[Object] {
 
   private val totalTimeNanos = new AtomicLong()
   private val count = new AtomicLong()
 
-  private val totalTimeMonitor = new LongValueStatMonitor(withTag(TotalTimeTag), () => totalTimeNanos.longValue())
-  private val countMonitor = new LongValueStatMonitor(withTag(CountTag), () => count.longValue())
+  private val totalTimeMonitor = new LongValueStatMonitor(name, withTag(TotalTimeTag), () => totalTimeNanos.longValue())
+  private val countMonitor = new LongValueStatMonitor(name, withTag(CountTag), () => count.longValue())
 
-  private val meanMonitor = new LongValueStatMonitor(withTag(MeanTag), () => {
+  private val meanMonitor = new LongValueStatMonitor(name, withTag(MeanTag), () => {
     if (count.longValue() > 0) {
       (totalTimeNanos.doubleValue() / count.doubleValue()).toLong
     } else {
       0
     }
   })
-  private val minMonitor = new ConditionalGauge(withTag(MinTag), (existingValue, newValue) => { newValue < existingValue })
-  private val maxMonitor = new ConditionalGauge(withTag(MaxTag), (existingValue, newValue) => { newValue > existingValue })
+  private val minMonitor = new ConditionalGauge(name, withTag(MinTag),
+      (existingValue, newValue) => { newValue < existingValue })
+  private val maxMonitor = new ConditionalGauge(name, withTag(MaxTag),
+      (existingValue, newValue) => { newValue > existingValue })
 
-  private val subMonitors = Seq(totalTimeMonitor, countMonitor, meanMonitor, minMonitor, maxMonitor)
+  private val subMonitors: mutable.Buffer[Monitor[_]] =
+      mutable.ArrayBuffer(totalTimeMonitor, countMonitor, meanMonitor, minMonitor, maxMonitor)
 
   /**
    * Records an occurrence of the specified duration, in milliseconds
@@ -80,6 +81,11 @@ class ServoTimer(@transient config: MonitorConfig) extends CompositeMonitor[Obje
     totalTimeNanos.getAndAdd(duration)
     minMonitor.record(duration)
     maxMonitor.record(duration)
+  }
+
+  def adjustTotalTime(duration: Long) {
+    // TODO NF: We need to do something with the max and min here, as they will be incorrect
+    totalTimeNanos.getAndAdd(duration)
   }
 
   /**
@@ -118,13 +124,6 @@ class ServoTimer(@transient config: MonitorConfig) extends CompositeMonitor[Obje
   }
 
   /**
-   * Returns the name of this timer
-   */
-  def getName: String = {
-    baseConfig.getName
-  }
-
-  /**
    * Merges the passed-in [[ServoTimer]] into this one. Note that the config is not merged (only the recorded statistics).
    */
   def merge(mergeWith: ServoTimer) {
@@ -134,20 +133,12 @@ class ServoTimer(@transient config: MonitorConfig) extends CompositeMonitor[Obje
     maxMonitor.record(mergeWith.maxMonitor.getValue)
   }
 
-  /**
-   * Adds the passed-in tag to the config for this timer, and its sub-monitors
-   */
-  override def addTag(tag: Tag) {
-    baseConfig = baseConfig.withAdditionalTag(tag)
-    subMonitors.foreach(_.addTag(tag))
+  def addSubMonitor(monitor: Monitor[_]) {
+    subMonitors += monitor
   }
 
   override def getMonitors: util.List[Monitor[_]] = {
     subMonitors
-  }
-
-  override def getConfig: MonitorConfig = {
-    baseConfig
   }
 
   /**
@@ -157,25 +148,19 @@ class ServoTimer(@transient config: MonitorConfig) extends CompositeMonitor[Obje
     java.lang.Long.valueOf(getTotalTime)
   }
 
-  private def withTag(tag: Tag): MonitorConfig = {
-    baseConfig.withAdditionalTag(tag)
+  private def withTag(tag: Tag): Seq[Tag] = {
+    tags ++ Seq(tag)
   }
 
-  private class LongValueStatMonitor(@transient var config: MonitorConfig, function: () => Long) extends Monitor[Long]
-      with Taggable with Serializable {
+  private class LongValueStatMonitor(name: String, @transient tags: Seq[Tag], function: () => Long)
+      extends ConfigurableMonitor(name, tags) with Monitor[Long] {
     override def getValue: Long = {
       function.apply()
     }
-    override def getConfig: MonitorConfig = {
-      config
-    }
-    override def addTag(tag: Tag) {
-      config = config.withAdditionalTag(tag)
-    }
   }
 
-  private class ConditionalGauge(@transient var config: MonitorConfig, condition: (Long, Long) => Boolean) extends Gauge[java.lang.Long]
-      with Taggable with Serializable {
+  private class ConditionalGauge(name: String, @transient tags: Seq[Tag], condition: (Long, Long) => Boolean)
+      extends ConfigurableMonitor(name, tags) with Gauge[java.lang.Long] {
     // This is always set inside a lock but read outside it, so it needs to be volatile
     @volatile var set: Boolean = false
     val value: AtomicLong = new AtomicLong()
@@ -195,12 +180,6 @@ class ServoTimer(@transient config: MonitorConfig) extends CompositeMonitor[Obje
     override def getValue: java.lang.Long = {
       value.get()
     }
-    override def getConfig: MonitorConfig = {
-      config
-    }
-    override def addTag(tag: Tag) {
-      config = config.withAdditionalTag(tag)
-    }
     private def setInitialValue(newValue: Long) {
       if (!set) {
         this.synchronized {
@@ -214,6 +193,45 @@ class ServoTimer(@transient config: MonitorConfig) extends CompositeMonitor[Obje
     }
   }
 }
+
+abstract class ConfigurableMonitor(val name: String, @transient tags: Seq[Tag])
+    extends Taggable with Serializable {
+
+  private val serializableTags: mutable.Buffer[SerializableTag] = createSerializableTags(tags)
+
+  // This is created at construction time, and (when the object is deserialized) by the readResolve method
+  @transient private var baseConfig: MonitorConfig = createBaseConfig(name, serializableTags)
+
+  def getName: String = {
+    name
+  }
+
+  override def addTag(tag: Tag) {
+    baseConfig = getConfig.withAdditionalTag(tag)
+    serializableTags += new SerializableTag(tag.getKey, tag.getValue)
+  }
+
+  def getConfig: MonitorConfig = {
+    if (baseConfig == null) {
+      baseConfig = createBaseConfig(name, serializableTags)
+    }
+    baseConfig
+  }
+
+  private def createSerializableTags(tags: Seq[Tag]): mutable.Buffer[SerializableTag] = {
+    tags.map(tag => new SerializableTag(tag.getKey, tag.getValue)).toBuffer
+  }
+
+  private def createBaseConfig(name: String, tags: Seq[SerializableTag]): MonitorConfig = {
+    val builder = MonitorConfig.builder(name)
+    tags.foreach(tag => {builder.withTag(Tags.newTag(tag.key, tag.value))})
+    builder.withTag(TimeUnitTagKey, NANOSECONDS.name()).withTag(NameTagKey, name)
+    builder.build()
+  }
+
+}
+
+private class SerializableTag(val key: String, val value: String) extends Serializable
 
 object ServoTimer {
 
