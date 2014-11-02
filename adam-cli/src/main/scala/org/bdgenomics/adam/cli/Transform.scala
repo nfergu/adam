@@ -27,6 +27,7 @@ import org.bdgenomics.adam.rdd.variation.ADAMVariationContext._
 import org.bdgenomics.adam.rich.RichVariant
 import org.bdgenomics.formats.avro.AlignmentRecord
 import org.kohsuke.args4j.{ Argument, Option => Args4jOption }
+import com.sun.xml.internal.bind.v2.TODO
 
 object Transform extends ADAMCommandCompanion {
   val commandName = "transform"
@@ -101,8 +102,7 @@ class Transform(protected val args: TransformArgs) extends ADAMSparkCommand[Tran
 
     if (args.recalibrateBaseQualities) {
       log.info("Recalibrating base qualities")
-      val variants: RDD[RichVariant] = sc.adamVCFLoad(args.knownSnpsFile).map(_.variant)
-      val knownSnps = SnpTable(variants)
+      val knownSnps: SnpTable = createKnownSnpsTable(sc)
       adamRecords = adamRecords.adamBQSR(sc.broadcast(knownSnps))
     }
 
@@ -138,6 +138,13 @@ class Transform(protected val args: TransformArgs) extends ADAMSparkCommand[Tran
       adamRecords.adamSave(args.outputPath, blockSize = args.blockSize, pageSize = args.pageSize,
         compressCodec = args.compressionCodec, disableDictionaryEncoding = args.disableDictionary)
     }
+  }
+
+
+  def createKnownSnpsTable(sc: SparkContext): SnpTable =  {
+    val variants: RDD[RichVariant] = sc.adamVCFLoad(args.knownSnpsFile).map(_.variant)
+    val knownSnps = SnpTable(variants)
+    knownSnps
   }
 
 }

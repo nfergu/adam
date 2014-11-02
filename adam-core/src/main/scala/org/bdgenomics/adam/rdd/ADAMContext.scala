@@ -25,23 +25,24 @@ import org.apache.avro.Schema
 import org.apache.avro.specific.SpecificRecord
 import org.apache.hadoop.fs.{ FileSystem, Path }
 import org.apache.hadoop.io.LongWritable
-import org.apache.spark.rdd.RDD
-import org.apache.spark.scheduler.StatsReportListener
+import org.apache.spark.rdd.{ADAMMetricsPairRDDFunctions, ADAMMetricsRDDFunctions, RDD}
 import org.apache.spark.{ Logging, SparkConf, SparkContext }
+import org.bdgenomics.adam.rdd.ADAMContext.rddToMetricsRDD
 import org.bdgenomics.adam.converters.SAMRecordConverter
-import org.bdgenomics.adam.instrumentation.ADAMMetricsListener
 import org.bdgenomics.adam.models._
 import org.bdgenomics.adam.predicates.ADAMPredicate
 import org.bdgenomics.adam.projections.{ AlignmentRecordField, NucleotideContigFragmentField, Projection }
 import org.bdgenomics.adam.rich.RichAlignmentRecord
 import org.bdgenomics.adam.util.HadoopUtil
 import org.bdgenomics.formats.avro.{ AlignmentRecord, NucleotideContigFragment, Pileup }
+import org.bdgenomics.adam.instrumentation.Timers._
 import parquet.avro.{ AvroParquetInputFormat, AvroReadSupport }
 import parquet.filter.UnboundRecordFilter
 import parquet.hadoop.ParquetInputFormat
 import parquet.hadoop.util.ContextUtil
 import scala.collection.JavaConversions._
 import scala.collection.Map
+import scala.reflect.ClassTag
 
 object ADAMContext {
   // Add ADAM Spark context methods
@@ -52,6 +53,10 @@ object ADAMContext {
 
   // Add RDD methods for recording metrics
   implicit def rddToMetricsRDD[T](rdd: RDD[T]) = new ADAMMetricsRDDFunctions(rdd)
+
+  // Add RDD methods for recording metrics for pairs
+  implicit def rddToPairMetricsRDD[K, V](rdd: RDD[(K, V)])
+      (implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null) = new ADAMMetricsPairRDDFunctions(rdd)
 
   // Add implicits for the rich adam objects
   implicit def recordToRichRecord(record: AlignmentRecord): RichAlignmentRecord = new RichAlignmentRecord(record)
@@ -98,7 +103,7 @@ class ADAMContext(val sc: SparkContext) extends Serializable with Logging {
     RecordGroupDictionary.fromSAMHeader(samHeader)
   }
 
-  protected[rdd] def adamBamLoad(filePath: String): RDD[AlignmentRecord] = {
+  protected[rdd] def adamBamLoad(filePath: String): RDD[AlignmentRecord] = BAMLoad.time {
     log.info("Reading legacy BAM file format %s to create RDD".format(filePath))
 
     // We need to separately read the header, so that we can inject the sequence dictionary
@@ -115,7 +120,7 @@ class ADAMContext(val sc: SparkContext) extends Serializable with Logging {
     records.map(p => samRecordConverter.convert(p._2.get, seqDict, readGroups))
   }
 
-  private[rdd] def adamParquetLoad[T <% SpecificRecord: Manifest, U <: UnboundRecordFilter](filePath: String, predicate: Option[Class[U]] = None, projection: Option[Schema] = None): RDD[T] = {
+  private[rdd] def adamParquetLoad[T <% SpecificRecord: Manifest, U <: UnboundRecordFilter](filePath: String, predicate: Option[Class[U]] = None, projection: Option[Schema] = None): RDD[T] = ParquetLoad.time {
     log.info("Reading the ADAM file at %s to create RDD".format(filePath))
     val job = HadoopUtil.newJob(sc)
     ParquetInputFormat.setReadSupportClass(job, classOf[AvroReadSupport[T]])
@@ -132,7 +137,7 @@ class ADAMContext(val sc: SparkContext) extends Serializable with Logging {
       ContextUtil.getConfiguration(job)).map(p => p._2)
     if (predicate.isDefined) {
       // Strip the nulls that the predicate returns
-      records.filter(p => p != null.asInstanceOf[T])
+      records.adamFilter(p => p != null.asInstanceOf[T])
     } else {
       records
     }
@@ -207,7 +212,7 @@ class ADAMContext(val sc: SparkContext) extends Serializable with Logging {
    * @tparam T The type of records to return
    * @return An RDD with records of the specified type
    */
-  def adamLoad[T <% SpecificRecord: Manifest, U <: ADAMPredicate[T]](filePath: String, predicate: Option[Class[U]] = None, projection: Option[Schema] = None): RDD[T] = {
+  def adamLoad[T <% SpecificRecord: Manifest, U <: ADAMPredicate[T]](filePath: String, predicate: Option[Class[U]] = None, projection: Option[Schema] = None): RDD[T] = ADAMLoadInDriver.time {
 
     if (filePath.endsWith(".bam") || filePath.endsWith(".sam") && classOf[AlignmentRecord].isAssignableFrom(manifest[T].runtimeClass)) {
 

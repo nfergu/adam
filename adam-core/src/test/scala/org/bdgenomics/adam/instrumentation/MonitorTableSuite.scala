@@ -32,8 +32,8 @@ class MonitorTableSuite extends FunSuite {
       new TableHeader(name = "Col3", valueExtractor = ValueExtractor.forMonitorValue()))
 
     val rows = Array[Monitor[_]](
-      new ServoTimer(MonitorConfig.builder("timer1").build()),
-      new ServoTimer(MonitorConfig.builder("timer2").build()))
+      new ServoTimer("timer1"),
+      new ServoTimer("timer2"))
 
     rows(0).asInstanceOf[ServoTimer].addTag(Tags.newTag("TagKey1", "Col1Value1"))
     rows(1).asInstanceOf[ServoTimer].addTag(Tags.newTag("TagKey1", "Col1Value2 A Bit Longer"))

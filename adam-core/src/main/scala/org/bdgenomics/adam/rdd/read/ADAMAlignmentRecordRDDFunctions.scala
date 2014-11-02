@@ -38,7 +38,7 @@ import org.bdgenomics.adam.rdd.read.recalibration.BaseQualityRecalibration
 import org.bdgenomics.adam.rich.RichAlignmentRecord
 import org.bdgenomics.adam.util.MapTools
 import org.bdgenomics.formats.avro._
-import org.bdgenomics.adam.instrumentation.Timers
+import org.bdgenomics.adam.instrumentation.Timers._
 
 class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSequenceDictionaryRDDAggregator[AlignmentRecord](rdd) {
 
@@ -70,13 +70,13 @@ class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSeq
    * @param filePath Path to save files to.
    * @param asSam Selects whether to save as SAM or BAM. The default value is true (save in SAM format).
    */
-  def adamSAMSave(filePath: String, asSam: Boolean = true) {
+  def adamSAMSave(filePath: String, asSam: Boolean = true) = SAMSave.time {
 
     // convert the records
     val (convertRecords: RDD[SAMRecordWritable], header: SAMFileHeader) = rdd.adamConvertToSAM()
 
     // add keys to our records
-    val withKey = convertRecords.keyBy(v => new LongWritable(v.get.getAlignmentStart))
+    val withKey = convertRecords.adamKeyBy(v => new LongWritable(v.get.getAlignmentStart))
 
     // attach header to output format
     asSam match {
@@ -115,7 +115,7 @@ class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSeq
    *
    * @return Returns a SAM/BAM formatted RDD of reads, as well as the file header.
    */
-  def adamConvertToSAM(): (RDD[SAMRecordWritable], SAMFileHeader) = {
+  def adamConvertToSAM(): (RDD[SAMRecordWritable], SAMFileHeader) = ConvertToSAM.time {
     // collect global summary data
     val sd = rdd.adamGetSequenceDictionary()
     val rgd = rdd.adamGetReadGroupDictionary()
@@ -130,7 +130,7 @@ class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSeq
     val hdrBcast = rdd.context.broadcast(SAMFileHeaderWritable(header))
 
     // map across RDD to perform conversion
-    val convertedRDD: RDD[SAMRecordWritable] = rdd.map(r => {
+    val convertedRDD: RDD[SAMRecordWritable] = rdd.adamMap(r => {
       // must wrap record for serializability
       val srw = new SAMRecordWritable()
       srw.set(adamRecordConverter.convert(r, hdrBcast.value))
@@ -175,7 +175,7 @@ class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSeq
     ErrorCorrection.countQmers(rdd, qmerLength)
   }
 
-  def adamSortReadsByReferencePosition(): RDD[AlignmentRecord] = {
+  def adamSortReadsByReferencePosition(): RDD[AlignmentRecord] = SortReads.time {
     log.info("Sorting reads by reference position")
 
     // NOTE: In order to keep unmapped reads from swamping a single partition
@@ -199,7 +199,7 @@ class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSeq
       }
     }
 
-    rdd.map(p => {
+    rdd.adamMap(p => {
       val referencePos = ReferencePosition(p) match {
         case None =>
           // Move unmapped reads to the end of the file
@@ -208,14 +208,14 @@ class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSeq
         case Some(pos) => pos
       }
       (referencePos, p)
-    }).sortByKey().map(p => p._2)
+    }).sortByKey().adamMap(p => p._2)
   }
 
-  def adamMarkDuplicates(): RDD[AlignmentRecord] = {
+  def adamMarkDuplicates(): RDD[AlignmentRecord] = MarkDuplicatesInDriver.time {
     MarkDuplicates(rdd)
   }
 
-  def adamBQSR(knownSnps: Broadcast[SnpTable]): RDD[AlignmentRecord] = {
+  def adamBQSR(knownSnps: Broadcast[SnpTable]): RDD[AlignmentRecord] = BQSRInDriver.time {
     BaseQualityRecalibration(rdd, knownSnps)
   }
 
@@ -239,7 +239,7 @@ class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSeq
                         maxIndelSize: Int = 500,
                         maxConsensusNumber: Int = 30,
                         lodThreshold: Double = 5.0,
-                        maxTargetSize: Int = 3000): RDD[AlignmentRecord] = {
+                        maxTargetSize: Int = 3000): RDD[AlignmentRecord] = RealignIndelsInDriver.time {
     RealignIndels(rdd, consensusModel, isSorted, maxIndelSize, maxConsensusNumber, lodThreshold)
   }
 
@@ -370,7 +370,7 @@ class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSeq
    *
    * @note Trimming parameters must be >= 0.
    */
-  def adamTrimReads(trimStart: Int, trimEnd: Int, readGroup: String = null): RDD[AlignmentRecord] = {
+  def adamTrimReads(trimStart: Int, trimEnd: Int, readGroup: String = null): RDD[AlignmentRecord] = TrimReadsInDriver.time {
     TrimReads(rdd, trimStart, trimEnd, readGroup)
   }
 
@@ -382,7 +382,7 @@ class ADAMAlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord]) extends ADAMSeq
    * @param phredThreshold Phred score for trimming. Defaut value is 20.
    * @return Returns an RDD of trimmed reads.
    */
-  def adamTrimLowQualityReadGroups(phredThreshold: Int = 20): RDD[AlignmentRecord] = {
+  def adamTrimLowQualityReadGroups(phredThreshold: Int = 20): RDD[AlignmentRecord] = TrimLowQualityInDriver.time {
     TrimReads(rdd, phredThreshold)
   }
 }

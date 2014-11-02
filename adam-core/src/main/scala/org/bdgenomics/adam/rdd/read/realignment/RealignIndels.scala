@@ -21,6 +21,7 @@ import htsjdk.samtools.{ Cigar, CigarElement, CigarOperator }
 import org.apache.spark.Logging
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
+import org.bdgenomics.adam.rdd.ADAMContext.rddToMetricsRDD
 import org.bdgenomics.adam.algorithms.consensus.{ ConsensusGenerator, ConsensusGeneratorFromReads }
 import org.bdgenomics.adam.models.{ Consensus, ReferencePosition, ReferenceRegion }
 import org.bdgenomics.adam.rich.RichAlignmentRecord
@@ -442,17 +443,17 @@ private[rdd] class RealignIndels(val consensusModel: ConsensusGenerator = new Co
    */
   def realignIndels(rdd: RDD[AlignmentRecord]): RDD[AlignmentRecord] = {
     val sortedRdd = if (dataIsSorted) {
-      rdd.filter(r => r.getReadMapped)
+      rdd.adamFilter(r => r.getReadMapped)
     } else {
-      val sr = rdd.filter(r => r.getReadMapped)
-        .keyBy(r => ReferencePosition(r).get)
+      val sr = rdd.adamFilter(r => r.getReadMapped)
+        .adamKeyBy(r => ReferencePosition(r).get)
         .sortByKey()
 
-      sr.map(kv => kv._2)
+      sr.adamMap(kv => kv._2)
     }
 
     // we only want to convert once so let's get it over with
-    val rich_rdd = sortedRdd.map(new RichAlignmentRecord(_))
+    val rich_rdd = sortedRdd.adamMap(new RichAlignmentRecord(_))
 
     // find realignment targets
     log.info("Generating realignment targets...")
@@ -466,7 +467,7 @@ private[rdd] class RealignIndels(val consensusModel: ConsensusGenerator = new Co
 
     // realign target groups
     log.info("Sorting reads by reference in ADAM RDD")
-    readsMappedToTarget.flatMap(realignTargetGroup).map(r => r.record)
+    readsMappedToTarget.adamFlatMap(realignTargetGroup).adamMap(r => r.record)
   }
 
 }

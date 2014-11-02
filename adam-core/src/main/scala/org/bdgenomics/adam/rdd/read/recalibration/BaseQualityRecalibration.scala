@@ -21,6 +21,7 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.Logging
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
+import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.adam.models.SnpTable
 import org.bdgenomics.adam.rich.DecadentRead
 import org.bdgenomics.adam.rich.DecadentRead._
@@ -68,7 +69,7 @@ class BaseQualityRecalibration(
       covariates(read).zip(read.residues).
         filter { case (key, residue) => shouldIncludeResidue(residue) }
 
-    input.filter(shouldIncludeRead).flatMap(observe)
+    input.adamFilter(shouldIncludeRead).adamFlatMap(observe)
   }
 
   if (enableVisitLogging) {
@@ -79,8 +80,8 @@ class BaseQualityRecalibration(
 
   val observed: ObservationTable = {
     dataset.
-      map { case (key, residue) => (key, Observation(residue.isSNP)) }.
-      aggregate(ObservationAccumulator(covariates))(_ += _, _ ++= _).result
+      adamMap { case (key, residue) => (key, Observation(residue.isSNP)) }.
+      adamAggregate(ObservationAccumulator(covariates))(_ += _, _ ++= _).result
   }
 
   if (dumpObservationTable) {
@@ -89,7 +90,7 @@ class BaseQualityRecalibration(
 
   val result: RDD[AlignmentRecord] = {
     val recalibrator = Recalibrator(observed, minAcceptableQuality)
-    input.map(recalibrator)
+    input.adamMap(recalibrator)
   }
 
   private def dumpVisits(filename: String) = {

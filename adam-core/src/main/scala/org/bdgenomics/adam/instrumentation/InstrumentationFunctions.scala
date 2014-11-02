@@ -24,7 +24,7 @@ object InstrumentationFunctions {
       TableHeader(name = "Max", valueExtractor = forMonitorMatchingTag(MaxTag), formatFunction = Some(formatNanos)))
   }
 
-  def renderTable(out: PrintStream, name: String, timers: Seq[Monitor[_]], header: ArrayBuffer[TableHeader]) = {
+  def renderTable(out: PrintStream, name: String, timers: Seq[Monitor[_]], header: Seq[TableHeader]) = {
     val monitorTable = new MonitorTable(header.toArray, timers.toArray)
     out.println(name)
     monitorTable.print(out)
