@@ -59,7 +59,7 @@ class ServoTimers extends Serializable {
 /**
  * Specifies a timing that is to recorded
  */
-class RecordedTiming(val timingNanos: Long, val timerName: String, val pathToRoot: TimingPath) extends Serializable
+case class RecordedTiming(timingNanos: Long, timerName: String, pathToRoot: TimingPath) extends Serializable
 
 /**
  * Specifies a timer ID, along with all of its ancestors.
@@ -89,7 +89,8 @@ class TimingPath(val timerId: Int, val parentPath: Option[TimingPath], val seque
   }
 
   override def toString: String = {
-    (if (parentPath.isDefined) parentPath.get.toString() else "") + "/" + timerId
+    (if (parentPath.isDefined) parentPath.get.toString() else "") + "/" + timerId +
+        "(" + sequenceId + "," + isRDDOperation + ")"
   }
 
   private def computeDepth(): Int = {
