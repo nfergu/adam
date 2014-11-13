@@ -140,8 +140,7 @@ class Transform(protected val args: TransformArgs) extends ADAMSparkCommand[Tran
     }
   }
 
-
-  def createKnownSnpsTable(sc: SparkContext): SnpTable =  {
+  def createKnownSnpsTable(sc: SparkContext): SnpTable = {
     val variants: RDD[RichVariant] = sc.adamVCFLoad(args.knownSnpsFile).map(_.variant)
     val knownSnps = SnpTable(variants)
     knownSnps

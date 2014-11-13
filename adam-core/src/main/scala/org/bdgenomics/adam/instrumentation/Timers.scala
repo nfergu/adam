@@ -1,5 +1,7 @@
 package org.bdgenomics.adam.instrumentation
 
+import org.bdgenomics.adam.instrumentation.Metrics
+
 /**
  * Contains [[Timers]] that are used to instrument ADAM.
  */
@@ -33,9 +35,14 @@ object Timers extends Metrics {
 
   // Realign Indels
   val RealignIndelsInDriver = timer("Realign Indels")
+  val FindTargets = timer("Find Targets")
   val CreateIndelRealignmentTargets = timer("Create Indel Realignment Targets for Read")
   val SortTargets = timer("Sort Targets")
   val JoinTargets = timer("Join Targets")
+  val MapTargets = timer("Map Targets")
+  val RealignTargetGroup = timer("Realign Target Group")
+  val GetReferenceFromReads = timer("Get Reference From Reads")
+  val SweepReadOverReferenceForQuality = timer("Sweep Read Over Reference For Quality")
 
   // Sort Reads
   val SortReads = timer("Sort Reads")

@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConversions._
 import com.netflix.servo.tag.Tags.newTag
-import com.netflix.servo.tag.{Tags, Tag}
+import com.netflix.servo.tag.{ Tags, Tag }
 import org.bdgenomics.adam.instrumentation.ServoTimer._
 import scala.collection.mutable
 import java.util.concurrent.TimeUnit._
@@ -59,12 +59,12 @@ class ServoTimer(name: String, @transient tags: Tag*) extends ConfigurableMonito
     }
   })
   private val minMonitor = new ConditionalGauge(name, withTag(MinTag),
-      (existingValue, newValue) => { newValue < existingValue })
+    (existingValue, newValue) => { newValue < existingValue })
   private val maxMonitor = new ConditionalGauge(name, withTag(MaxTag),
-      (existingValue, newValue) => { newValue > existingValue })
+    (existingValue, newValue) => { newValue > existingValue })
 
   private val subMonitors: mutable.Buffer[Monitor[_]] =
-      mutable.ArrayBuffer(totalTimeMonitor, countMonitor, meanMonitor, minMonitor, maxMonitor)
+    mutable.ArrayBuffer(totalTimeMonitor, countMonitor, meanMonitor, minMonitor, maxMonitor)
 
   /**
    * Records an occurrence of the specified duration, in milliseconds
@@ -83,9 +83,16 @@ class ServoTimer(name: String, @transient tags: Tag*) extends ConfigurableMonito
     maxMonitor.record(duration)
   }
 
+  /**
+   * Adjusts the total time. The mean time will be computed using the new total, and the
+   * count is left unchanged. However, the min and max values are cleared, as it is no
+   * longer possible to determine them after the total is adjusted.
+   */
   def adjustTotalTime(duration: Long) {
-    // TODO NF: We need to do something with the max and min here, as they will be incorrect
     totalTimeNanos.getAndAdd(duration)
+    // We need to wipe the min and max here, as they will be wrong
+    minMonitor.clear()
+    maxMonitor.clear()
   }
 
   /**
@@ -177,8 +184,14 @@ class ServoTimer(name: String, @transient tags: Tag*) extends ConfigurableMonito
         }
       }
     }
+    def clear() {
+      this.synchronized {
+        set = false
+        value.set(0)
+      }
+    }
     override def getValue: java.lang.Long = {
-      value.get()
+      if (set) value.get() else null
     }
     private def setInitialValue(newValue: Long) {
       if (!set) {
@@ -224,7 +237,7 @@ abstract class ConfigurableMonitor(val name: String, @transient tags: Seq[Tag])
 
   private def createBaseConfig(name: String, tags: Seq[SerializableTag]): MonitorConfig = {
     val builder = MonitorConfig.builder(name)
-    tags.foreach(tag => {builder.withTag(Tags.newTag(tag.key, tag.value))})
+    tags.foreach(tag => { builder.withTag(Tags.newTag(tag.key, tag.value)) })
     builder.withTag(TimeUnitTagKey, NANOSECONDS.name()).withTag(NameTagKey, name)
     builder.build()
   }

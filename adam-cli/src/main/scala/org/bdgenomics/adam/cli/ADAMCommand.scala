@@ -56,7 +56,7 @@ trait ADAMSparkCommand[A <: Args4jBase] extends ADAMCommand with Logging {
     val sc = new SparkContext(conf)
     val job = HadoopUtil.newJob()
     metricsListener.foreach(sc.addSparkListener(_))
-    if (args.printMetrics) Timers.initialize(sc)
+    if (args.printMetrics) Metrics.initialize(sc)
     run(sc, job)
     val totalTime = System.nanoTime() - start
     printMetrics(totalTime, metricsListener)
@@ -71,10 +71,9 @@ trait ADAMSparkCommand[A <: Args4jBase] extends ADAMCommand with Logging {
       out.println()
       out.println("Overall Duration: " + DurationFormatting.formatNanosecondDuration(totalTime))
       out.println()
+      Timers.print(out, Some(listener.adamMetrics.adamSparkMetrics.stageTimes))
+      out.println()
       listener.adamMetrics.adamSparkMetrics.print(out)
-      out.println()
-      Timers.print(out)
-      out.println()
       logInfo("Metrics:" + bytes.toString("UTF-8"))
     })
   }

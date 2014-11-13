@@ -21,7 +21,7 @@ import java.util.logging.Level
 import org.apache.avro.specific.SpecificRecord
 import org.apache.spark.SparkContext._
 import org.apache.spark.Logging
-import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.{ InstrumentedOutputFormat, RDD }
 import org.bdgenomics.adam.models._
 import org.bdgenomics.adam.util.{
   HadoopUtil,
@@ -32,12 +32,12 @@ import parquet.avro.AvroParquetOutputFormat
 import parquet.hadoop.ParquetOutputFormat
 import parquet.hadoop.metadata.CompressionCodecName
 import parquet.hadoop.util.ContextUtil
-import org.bdgenomics.adam.instrumentation.{Timer, Metrics}
+import org.bdgenomics.adam.instrumentation.Timers
 import org.bdgenomics.adam.instrumentation.Timers._
 import scala.reflect.ClassTag
-import org.apache.hadoop.mapreduce.{OutputFormat => NewOutputFormat, _}
+import org.apache.hadoop.mapreduce.{ OutputFormat => NewOutputFormat, _ }
 import org.apache.avro.generic.IndexedRecord
-import org.apache.hadoop.metrics.util.MetricsRegistry
+import scala.util.DynamicVariable
 
 class ADAMRDDFunctions[T <% SpecificRecord: Manifest](rdd: RDD[T]) extends Serializable {
 
@@ -52,37 +52,13 @@ class ADAMRDDFunctions[T <% SpecificRecord: Manifest](rdd: RDD[T]) extends Seria
     ParquetOutputFormat.setPageSize(job, pageSize)
     AvroParquetOutputFormat.setSchema(job, manifest[T].runtimeClass.asInstanceOf[Class[T]].newInstance().getSchema)
     // Add the Void Key
-    val recordToSave = rdd.adamLeakyMap(p => (null, p))
+    val recordToSave = rdd.adamMap(p => (null, p))
     // Save the values to the ADAM/Parquet file
     recordToSave.adamSaveAsNewAPIHadoopFile(filePath,
-      classOf[java.lang.Void], manifest[T].runtimeClass.asInstanceOf[Class[T]], classOf[InstrumentedOutputFormat],
+      classOf[java.lang.Void], manifest[T].runtimeClass.asInstanceOf[Class[T]], classOf[InstrumentedADAMAvroParquetOutputFormat],
       ContextUtil.getConfiguration(job))
   }
 
-}
-
-// TODO NF: Tidy this bit up and move it elsewhere
-
-class InstrumentedOutputFormat extends NewOutputFormat[Void, IndexedRecord] {
-  val delegate = new AvroParquetOutputFormat()
-  def getRecordWriter(context: TaskAttemptContext): RecordWriter[Void, IndexedRecord] = {
-    new InstrumentedRecordWriter(delegate.getRecordWriter(context))
-  }
-  def checkOutputSpecs(context: JobContext) = {
-    delegate.checkOutputSpecs(context)
-  }
-  def getOutputCommitter(context: TaskAttemptContext): OutputCommitter = {
-    delegate.getOutputCommitter(context)
-  }
-}
-
-class InstrumentedRecordWriter(delegate: RecordWriter[Void, IndexedRecord]) extends RecordWriter[Void, IndexedRecord] {
-  def write(key: Void, value: IndexedRecord) = WriteADAMRecord.time {
-    delegate.write(key, value)
-  }
-  def close(context: TaskAttemptContext) = {
-    delegate.close(context)
-  }
 }
 
 /**
@@ -147,4 +123,9 @@ class ADAMSpecificRecordSequenceDictionaryRDDAggregator[T <% SpecificRecord: Man
   def getSequenceRecordsFromElement(elem: T): Set[SequenceRecord] = {
     Set(SequenceRecord.fromSpecificRecord(elem))
   }
+}
+
+class InstrumentedADAMAvroParquetOutputFormat extends InstrumentedOutputFormat[Void, IndexedRecord] {
+  override def outputFormatClass(): Class[_ <: NewOutputFormat[Void, IndexedRecord]] = classOf[AvroParquetOutputFormat]
+  override def timerName():String = Timers.WriteADAMRecord.name
 }

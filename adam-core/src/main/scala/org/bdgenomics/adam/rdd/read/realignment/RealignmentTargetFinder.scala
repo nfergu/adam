@@ -98,7 +98,7 @@ class RealignmentTargetFinder extends Serializable with Logging {
    */
   def findTargets(reads: RDD[RichAlignmentRecord],
                   maxIndelSize: Int = 500,
-                  maxTargetSize: Int = 3000): TargetSet = {
+                  maxTargetSize: Int = 3000): TargetSet = FindTargets.time {
 
     def createTargetSet(target: IndelRealignmentTarget): TargetSet = {
       val tmp = new TreeSet()(TargetOrdering)
@@ -112,7 +112,7 @@ class RealignmentTargetFinder extends Serializable with Logging {
     val targets = reads.adamFlatMap(IndelRealignmentTarget(_, maxIndelSize))
       .adamFilter(t => !t.isEmpty)
 
-    val targetSet: TargetSet = TargetSet(targets.adamMapPartitions(iter => SortTargets.time {iter.toArray.sorted(TargetOrdering).toIterator})
+    val targetSet: TargetSet = TargetSet(targets.adamMapPartitions(iter => SortTargets.time { iter.toArray.sorted(TargetOrdering).toIterator })
       .adamMap(createTargetSet)
       .adamFold(TargetSet())((t1: TargetSet, t2: TargetSet) => joinTargets(t1, t2))
       .set.filter(_.readRange.length <= maxTargetSize))
