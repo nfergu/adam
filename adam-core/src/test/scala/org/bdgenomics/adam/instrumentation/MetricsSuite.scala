@@ -1,8 +1,8 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
-import org.apache.spark.{Logging, SparkConf, SparkContext}
-import java.io.{StringReader, BufferedReader, PrintStream, ByteArrayOutputStream}
+import org.scalatest.{ BeforeAndAfterAll, FunSuite }
+import org.apache.spark.{ Logging, SparkConf, SparkContext }
+import java.io.{ StringReader, BufferedReader, PrintStream, ByteArrayOutputStream }
 import scala.concurrent.duration.Duration
 
 class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfterAll {
@@ -72,15 +72,14 @@ class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfter
 
     val stageTimings = Seq(
       StageTiming(1, Some("RDD Group Operation 2"), Duration.fromNanos(1000000)),
-      StageTiming(2, Some("RDD Map Operation 1"), Duration.fromNanos(2000000))
-    )
+      StageTiming(2, Some("RDD Map Operation 1"), Duration.fromNanos(2000000)))
 
     val renderedTable = getRenderedTable(testTimers, Some(stageTimings))
     // We are using a prefix string here so that we compare the whitespace at the start of the metrics column
     // as well (if we didn't use the prefix it would be trimmed). In other words, we want to compare the actual
     // tree structure and not just the individual metrics.
     checkTable("Timings", getExpectedTimerValuesWithRDDOperations,
-        new BufferedReader(new StringReader(renderedTable)), prefixString = Some("#"))
+      new BufferedReader(new StringReader(renderedTable)), prefixString = Some("#"))
 
     checkTable("Spark Operations", getExpectedSparkOperations, new BufferedReader(new StringReader(renderedTable)))
 
@@ -131,8 +130,7 @@ class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfter
       Array("RDD Map Operation 1", "true", "2 ms", "2"),
       Array("RDD Group Operation 1", "false", "-", "-"),
       Array("RDD Group Operation 1", "false", "-", "-"),
-      Array("RDD Group Operation 2", "true", "1 ms", "1")
-    )
+      Array("RDD Group Operation 2", "true", "1 ms", "1"))
   }
 
   private def getExpectedTimerValuesWithRDDOperations: Array[Array[String]] = {
@@ -150,8 +148,7 @@ class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfter
       Array("#     │   │   └─ Timer 3", "4 ms", "-", "2", "2 ms", "2 ms", "2 ms"),
       Array("#     │   └─ RDD Group Operation 1", "-", "-", "1", "-", "-", "-"),
       // Another RDD operation has occurred, as a direct child of the root (Timer 4)
-      Array("#     └─ RDD Group Operation 2", "-", "-", "1", "-", "-", "-")
-    )
+      Array("#     └─ RDD Group Operation 2", "-", "-", "1", "-", "-", "-"))
   }
 
   private def getExpectedTimerValues: Array[Array[String]] = {
@@ -172,8 +169,7 @@ class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfter
       // Timer 2 has occurred once at the top level, after the two instances of Timer 1
       Array("# └─ Timer 2", "-", "20 ms", "1", "20 ms", "20 ms", "20 ms"),
       // Timer 2 has occurred again at the top level but is not consecutive with the first instance
-      Array("# └─ Timer 1", "-", "10 ms", "1", "10 ms", "10 ms", "10 ms")
-    )
+      Array("# └─ Timer 1", "-", "10 ms", "1", "10 ms", "10 ms", "10 ms"))
   }
 
   private def getRenderedTable(metrics: Metrics, sparkStageTimings: Option[Seq[StageTiming]]): String = {

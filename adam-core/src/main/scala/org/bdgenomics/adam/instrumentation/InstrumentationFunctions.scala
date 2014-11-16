@@ -34,7 +34,7 @@ object InstrumentationFunctions {
     // We need to do some dynamic type checking here, as monitors return an Object
     number match {
       case number: Number => DurationFormatting.formatNanosecondDuration(number)
-      case null => "-"
+      case null           => "-"
       case _              => throw new IllegalArgumentException("Cannot format non-numeric value [" + number + "]")
     }
   }

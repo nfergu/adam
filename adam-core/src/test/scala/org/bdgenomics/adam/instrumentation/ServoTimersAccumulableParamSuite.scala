@@ -1,7 +1,7 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
-import org.apache.spark.{Accumulable, SparkConf, SparkContext}
+import org.scalatest.{ BeforeAndAfterAll, FunSuite }
+import org.apache.spark.{ Accumulable, SparkConf, SparkContext }
 
 class ServoTimersAccumulableParamSuite extends FunSuite with BeforeAndAfterAll {
 
@@ -116,7 +116,6 @@ class ServoTimersAccumulableParamSuite extends FunSuite with BeforeAndAfterAll {
     assert(timerMap.get(child2).getName === "Timer 3")
     assert(timerMap.get(grandchild1).getTotalTime === 400000)
     assert(timerMap.get(grandchild1).getName === "Timer 2")
-
 
   }
 

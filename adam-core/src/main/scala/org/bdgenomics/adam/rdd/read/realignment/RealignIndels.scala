@@ -21,7 +21,7 @@ import htsjdk.samtools.{ Cigar, CigarElement, CigarOperator }
 import org.apache.spark.Logging
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
-import org.bdgenomics.adam.rdd.ADAMContext.rddToMetricsRDD
+import org.bdgenomics.adam.rdd.ADAMContext.{ rddToMetricsRDD, rddToOrderedMetricsRDD }
 import org.bdgenomics.adam.algorithms.consensus.{ ConsensusGenerator, ConsensusGeneratorFromReads }
 import org.bdgenomics.adam.models.{ Consensus, ReferencePosition, ReferenceRegion }
 import org.bdgenomics.adam.rich.RichAlignmentRecord
@@ -465,7 +465,7 @@ private[rdd] class RealignIndels(val consensusModel: ConsensusGenerator = new Co
     } else {
       val sr = rdd.adamFilter(r => r.getReadMapped)
         .adamKeyBy(r => ReferencePosition(r).get)
-        .sortByKey()
+        .adamSortByKey()
       sr.adamMap(kv => kv._2)
     }
 

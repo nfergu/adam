@@ -8,7 +8,7 @@ import java.util
 class BaseMetricsTestSuite extends FunSuite {
 
   protected def checkTable(name: String, expectedValues: Array[Array[String]], reader: BufferedReader,
-      prefixString: Option[String] = None) = {
+                           prefixString: Option[String] = None) = {
     advanceReaderToName(name, reader)
     var index = 0
     breakable {
@@ -50,8 +50,7 @@ class BaseMetricsTestSuite extends FunSuite {
     actual.foreach(actualCell => {
       if (prefixString.isDefined && expected(expectedIndex).startsWith(prefixString.get)) {
         assert((prefixString.get + actualCell).trim === expected(expectedIndex))
-      }
-      else {
+      } else {
         assert(actualCell.trim === expected(expectedIndex))
       }
       expectedIndex += 1

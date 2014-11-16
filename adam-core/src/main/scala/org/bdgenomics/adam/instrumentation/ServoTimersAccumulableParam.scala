@@ -80,7 +80,7 @@ class TimingPath(val timerId: Int, val parentPath: Option[TimingPath], val seque
       // (and is likely to identify a TimingPath uniquely most of the time)
       timerId == that.timerId && sequenceId == that.sequenceId && isRDDOperation == that.isRDDOperation &&
         (if (parentPath.isDefined) that.parentPath.isDefined && parentPath.get == that.parentPath.get
-          else !that.parentPath.isDefined)
+        else !that.parentPath.isDefined)
     case _ => false
   }
 
@@ -90,7 +90,7 @@ class TimingPath(val timerId: Int, val parentPath: Option[TimingPath], val seque
 
   override def toString: String = {
     (if (parentPath.isDefined) parentPath.get.toString() else "") + "/" + timerId +
-        "(" + sequenceId + "," + isRDDOperation + ")"
+      "(" + sequenceId + "," + isRDDOperation + ")"
   }
 
   private def computeDepth(): Int = {
