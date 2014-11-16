@@ -1,7 +1,7 @@
 package org.bdgenomics.adam.instrumentation
 
 import org.apache.spark.Accumulable
-import org.bdgenomics.adam.instrumentation.{Metrics, RecordedTiming}
+import org.bdgenomics.adam.instrumentation.{ Metrics, RecordedTiming }
 import scala.collection.mutable
 import javax.annotation.concurrent.NotThreadSafe
 
@@ -56,16 +56,14 @@ class MetricsRecorder(accumulable: Accumulable[ServoTimers, RecordedTiming],
     // For non top-level operations, just return a constant sequence ID.
     if (sequenceId.isDefined) {
       sequenceId.get
-    }
-    else {
+    } else {
       val topLevel = timingsStack.isEmpty
       if (topLevel) {
         val newSequenceId = if (timerId != previousTopLevelTimerId) Metrics.generateNewSequenceId() else previousTopLevelSequenceId
         previousTopLevelTimerId = timerId
         previousTopLevelSequenceId = newSequenceId
         newSequenceId
-      }
-      else {
+      } else {
         0
       }
     }

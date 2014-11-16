@@ -53,15 +53,13 @@ object ADAMContext {
   implicit def rddToADAMRDD[T <% SpecificRecord: Manifest](rdd: RDD[T]) = new ADAMRDDFunctions(rdd)
 
   // Add RDD methods for recording metrics
-  implicit def rddToMetricsRDD[T](rdd: RDD[T]) = new ADAMMetricsRDDFunctions(rdd)
+  implicit def rddToMetricsRDD[T](rdd: RDD[T]) = new ADAMInstrumentedRDDFunctions(rdd)
 
   // Add RDD methods for recording metrics for pairs
-  implicit def rddToPairMetricsRDD[K, V](rdd: RDD[(K, V)])(implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null) = new ADAMMetricsPairRDDFunctions(rdd)
+  implicit def rddToPairMetricsRDD[K, V](rdd: RDD[(K, V)])(implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null) = new ADAMInstrumentedPairRDDFunctions(rdd)
 
-  // TODO NF: Fix this!
   // Add RDD methods for recording metrics for ordered records
-  //  implicit def rddToOrderedMetricsRDD[K : Ordering : ClassTag, V: ClassTag](rdd: RDD[(K, V)]) =
-  //      new ADAMMetricsOrderedRDDFunctions[K, V, (K, V)](rdd)
+  implicit def rddToOrderedMetricsRDD[K: Ordering: ClassTag, V: ClassTag](rdd: RDD[(K, V)]) = new ADAMInstrumentedOrderedRDDFunctions[K, V](rdd)
 
   // Add implicits for the rich adam objects
   implicit def recordToRichRecord(record: AlignmentRecord): RichAlignmentRecord = new RichAlignmentRecord(record)
