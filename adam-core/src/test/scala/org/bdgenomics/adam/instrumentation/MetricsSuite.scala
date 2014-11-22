@@ -1,9 +1,10 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.scalatest.{ BeforeAndAfterAll, FunSuite }
-import org.apache.spark.{ Logging, SparkConf, SparkContext }
+import org.scalatest.BeforeAndAfterAll
+import org.apache.spark.{ SparkConf, Logging, SparkContext }
 import java.io.{ StringReader, BufferedReader, PrintStream, ByteArrayOutputStream }
 import scala.concurrent.duration.Duration
+import org.bdgenomics.adam.instrumentation.BaseMetricsTestSuite
 
 class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfterAll {
 

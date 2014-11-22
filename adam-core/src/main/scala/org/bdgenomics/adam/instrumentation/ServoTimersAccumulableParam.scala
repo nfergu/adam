@@ -32,12 +32,9 @@ class ServoTimers extends Serializable {
   val timerMap = new ConcurrentHashMap[TimingPath, ServoTimer]()
 
   def recordTiming(timing: RecordedTiming) = {
-    val servoTimer = timerMap.getOrElseUpdate(timing.pathToRoot, createServoTimer(timing))
+    val servoTimer = timerMap.getOrElseUpdate(timing.pathToRoot, createServoTimer(timing.pathToRoot.timerName))
     servoTimer.recordNanos(timing.timingNanos)
   }
-
-  // TODO NF: We can't use IDs to merge timers from different JVMs as IDs might get allocated differently
-  // in each JVM.
 
   def merge(servoTimers: ServoTimers) {
     servoTimers.timerMap.foreach(entry => {
@@ -50,8 +47,8 @@ class ServoTimers extends Serializable {
     })
   }
 
-  private def createServoTimer(timing: RecordedTiming): ServoTimer = {
-    new ServoTimer(timing.timerName)
+  private def createServoTimer(timerName: String): ServoTimer = {
+    new ServoTimer(timerName)
   }
 
 }
@@ -59,12 +56,12 @@ class ServoTimers extends Serializable {
 /**
  * Specifies a timing that is to recorded
  */
-case class RecordedTiming(timingNanos: Long, timerName: String, pathToRoot: TimingPath) extends Serializable
+case class RecordedTiming(timingNanos: Long, pathToRoot: TimingPath) extends Serializable
 
 /**
- * Specifies a timer ID, along with all of its ancestors.
+ * Specifies a timer name, along with all of its ancestors.
  */
-class TimingPath(val timerId: Int, val parentPath: Option[TimingPath], val sequenceId: Int = 0,
+class TimingPath(val timerName: String, val parentPath: Option[TimingPath], val sequenceId: Int = 0,
                  val isRDDOperation: Boolean = false) extends Serializable {
 
   val depth = computeDepth()
@@ -76,11 +73,12 @@ class TimingPath(val timerId: Int, val parentPath: Option[TimingPath], val seque
 
   override def equals(other: Any): Boolean = other match {
     case that: TimingPath =>
-      // This is ordered with timerId first, as that is likely to be a much cheaper comparison
-      // (and is likely to identify a TimingPath uniquely most of the time)
-      timerId == that.timerId && sequenceId == that.sequenceId && isRDDOperation == that.isRDDOperation &&
-        (if (parentPath.isDefined) that.parentPath.isDefined && parentPath.get == that.parentPath.get
-        else !that.parentPath.isDefined)
+      // This is ordered with timerName first, as that is likely to be a much cheaper comparison
+      // and is likely to identify a TimingPath uniquely most of the time (String.equals checks
+      // for reference equality, and since timer names are likely to be interned this should be cheap).
+      timerName == that.timerName && otherFieldsEqual(that) &&
+          (if (parentPath.isDefined) that.parentPath.isDefined && parentPath.get.equals(that.parentPath.get)
+          else !that.parentPath.isDefined)
     case _ => false
   }
 
@@ -89,8 +87,12 @@ class TimingPath(val timerId: Int, val parentPath: Option[TimingPath], val seque
   }
 
   override def toString: String = {
-    (if (parentPath.isDefined) parentPath.get.toString() else "") + "/" + timerId +
+    (if (parentPath.isDefined) parentPath.get.toString() else "") + "/" + timerName +
       "(" + sequenceId + "," + isRDDOperation + ")"
+  }
+
+  private def otherFieldsEqual(that: TimingPath): Boolean = {
+    sequenceId == that.sequenceId && isRDDOperation == that.isRDDOperation
   }
 
   private def computeDepth(): Int = {
@@ -99,7 +101,9 @@ class TimingPath(val timerId: Int, val parentPath: Option[TimingPath], val seque
 
   private def computeHashCode(): Int = {
     var result = 23
-    result = 37 * result + timerId
+    result = 37 * result + timerName.hashCode()
+    result = 37 * result + sequenceId
+    result = 37 * result + (if (isRDDOperation) 1 else 0)
     result = 37 * result + (if (parentPath.isDefined) parentPath.hashCode() else 0)
     result
   }

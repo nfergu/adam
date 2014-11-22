@@ -3,43 +3,42 @@ package org.apache.spark.rdd
 import scala.reflect.ClassTag
 import org.bdgenomics.adam.instrumentation._
 import org.apache.spark.SparkContext._
-import org.apache.hadoop.mapreduce.{ OutputFormat => NewOutputFormat }
 import org.apache.hadoop.conf.Configuration
 
-class ADAMInstrumentedRDDFunctions[T](self: RDD[T]) extends InstrumentedRDDFunctions {
+class ADAMInstrumentedRDDFunctions[T](self: RDD[T]) extends InstrumentedRDDFunctions() {
 
   def adamGroupBy[K](f: T => K)(implicit kt: ClassTag[K]): RDD[(K, Iterable[T])] = {
     recordOperation {
       val recorder = metricsRecorder()
-      self.groupBy((t: T) => { recordFunction(f, t, recorder, FunctionTimers.GroupByFunction) })
+      self.groupBy((t: T) => { recordFunction(f(t), recorder, FunctionTimers.GroupByFunction) })
     }
   }
 
   def adamMap[U: ClassTag](f: T => U): RDD[U] = {
     recordOperation {
       val recorder = metricsRecorder()
-      self.map((t: T) => { recordFunction(f, t, recorder, FunctionTimers.MapFunction) })
+      self.map((t: T) => { recordFunction(f(t), recorder, FunctionTimers.MapFunction) })
     }
   }
 
   def adamKeyBy[K](f: T => K): RDD[(K, T)] = {
     recordOperation {
       val recorder = metricsRecorder()
-      self.keyBy((t: T) => { recordFunction(f, t, recorder, FunctionTimers.KeyByFunction) })
+      self.keyBy((t: T) => { recordFunction(f(t), recorder, FunctionTimers.KeyByFunction) })
     }
   }
 
   def adamFlatMap[U: ClassTag](f: T => TraversableOnce[U]): RDD[U] = {
     recordOperation {
       val recorder = metricsRecorder()
-      self.flatMap((t: T) => { recordFunction(f, t, recorder, FunctionTimers.FlatMapFunction) })
+      self.flatMap((t: T) => { recordFunction(f(t), recorder, FunctionTimers.FlatMapFunction) })
     }
   }
 
   def adamFilter(f: T => Boolean): RDD[T] = {
     recordOperation {
       val recorder = metricsRecorder()
-      self.filter((t: T) => { recordFunction(f, t, recorder, FunctionTimers.FilterFunction) })
+      self.filter((t: T) => { recordFunction(f(t), recorder, FunctionTimers.FilterFunction) })
     }
   }
 
@@ -47,22 +46,22 @@ class ADAMInstrumentedRDDFunctions[T](self: RDD[T]) extends InstrumentedRDDFunct
     recordOperation {
       val recorder = metricsRecorder()
       self.aggregate(zeroValue)(
-        (u: U, t: T) => { recordFunction(seqOp, u, t, recorder, FunctionTimers.AggregateSeqFunction) },
-        (u: U, u2: U) => { recordFunction(combOp, u, u2, recorder, FunctionTimers.AggregateCombFunction) })
+        (u: U, t: T) => { recordFunction(seqOp(u, t), recorder, FunctionTimers.AggregateSeqFunction) },
+        (u: U, u2: U) => { recordFunction(combOp(u, u2), recorder, FunctionTimers.AggregateCombFunction) })
     }
   }
 
   def adamMapPartitions[U: ClassTag](f: Iterator[T] => Iterator[U], preservesPartitioning: Boolean = false): RDD[U] = {
     recordOperation {
       val recorder = metricsRecorder()
-      self.mapPartitions((t: Iterator[T]) => { recordFunction(f, t, recorder, FunctionTimers.MapPartitionsFunction) })
+      self.mapPartitions((t: Iterator[T]) => { recordFunction(f(t), recorder, FunctionTimers.MapPartitionsFunction) })
     }
   }
 
   def adamFold(zeroValue: T)(op: (T, T) => T): T = {
     recordOperation {
       val recorder = metricsRecorder()
-      self.fold(zeroValue)((t: T, t2: T) => { recordFunction(op, t, t2, recorder, FunctionTimers.FoldFunction) })
+      self.fold(zeroValue)((t: T, t2: T) => { recordFunction(op(t, t2), recorder, FunctionTimers.FoldFunction) })
     }
   }
 
@@ -75,9 +74,9 @@ class ADAMInstrumentedRDDFunctions[T](self: RDD[T]) extends InstrumentedRDDFunct
 }
 
 class ADAMInstrumentedPairRDDFunctions[K, V](self: RDD[(K, V)])(implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null)
-    extends InstrumentedRDDFunctions {
+    extends InstrumentedRDDFunctions() {
   def adamSaveAsNewAPIHadoopFile(path: String, keyClass: Class[_], valueClass: Class[_],
-                                 outputFormatClass: Class[_ <: NewOutputFormat[_, _]], conf: Configuration = self.context.hadoopConfiguration) {
+      outputFormatClass: Class[_ <: InstrumentedOutputFormat[_, _]], conf: Configuration = self.context.hadoopConfiguration) {
     recordOperation {
       val recorder = metricsRecorder()
       instrumentedSaveAsNewAPIHadoopFile(self, recorder, path, keyClass, valueClass, outputFormatClass, conf)

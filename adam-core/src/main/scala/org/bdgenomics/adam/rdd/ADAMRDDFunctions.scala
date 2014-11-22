@@ -19,10 +19,11 @@ package org.bdgenomics.adam.rdd
 
 import java.util.logging.Level
 import org.apache.avro.specific.SpecificRecord
-import org.apache.spark.SparkContext._
 import org.apache.spark.Logging
-import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.{InstrumentedOutputFormat, RDD}
+import org.bdgenomics.adam.instrumentation.Timers._
 import org.bdgenomics.adam.models._
+import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.adam.util.{
   HadoopUtil,
   ParquetLogger
@@ -31,7 +32,8 @@ import parquet.avro.AvroParquetOutputFormat
 import parquet.hadoop.ParquetOutputFormat
 import parquet.hadoop.metadata.CompressionCodecName
 import parquet.hadoop.util.ContextUtil
-import org.bdgenomics.adam.instrumentation.Metrics
+import org.apache.avro.generic.IndexedRecord
+import org.apache.hadoop.mapreduce.{ OutputFormat => NewOutputFormat, _ }
 
 trait ADAMParquetArgs {
   var blockSize: Int
@@ -64,7 +66,7 @@ class ADAMRDDFunctions[T <% SpecificRecord: Manifest](rdd: RDD[T]) extends Seria
                       blockSize: Int = 128 * 1024 * 1024,
                       pageSize: Int = 1 * 1024 * 1024,
                       compressCodec: CompressionCodecName = CompressionCodecName.GZIP,
-                      disableDictionaryEncoding: Boolean = false): Unit = {
+                      disableDictionaryEncoding: Boolean = false): Unit = SaveAsADAM.time {
     log.info("Saving data in ADAM format")
 
     val job = HadoopUtil.newJob(rdd.context)
@@ -75,51 +77,11 @@ class ADAMRDDFunctions[T <% SpecificRecord: Manifest](rdd: RDD[T]) extends Seria
     ParquetOutputFormat.setPageSize(job, pageSize)
     AvroParquetOutputFormat.setSchema(job, manifest[T].runtimeClass.asInstanceOf[Class[T]].newInstance().getSchema)
     // Add the Void Key
-    val recordToSave = rdd.map(p => (null, p))
+    val recordToSave = rdd.adamMap(p => (null, p))
     // Save the values to the ADAM/Parquet file
-    recordToSave.saveAsNewAPIHadoopFile(filePath,
-      classOf[java.lang.Void], manifest[T].runtimeClass.asInstanceOf[Class[T]], classOf[AvroParquetOutputFormat],
+    recordToSave.adamSaveAsNewAPIHadoopFile(filePath,
+      classOf[java.lang.Void], manifest[T].runtimeClass.asInstanceOf[Class[T]], classOf[InstrumentedADAMAvroParquetOutputFormat],
       ContextUtil.getConfiguration(job))
-  }
-
-}
-
-class ADAMMetricsRDDFunctions[T](rdd: RDD[T]) extends Serializable {
-
-  def adamGroupBy[K](f: scala.Function1[T, K])(implicit kt: scala.reflect.ClassTag[K]): org.apache.spark.rdd.RDD[scala.Tuple2[K, scala.Iterable[T]]] = {
-    val registryOption = Metrics.Registry.value
-    rdd.groupBy((t: T) => {
-      Metrics.Registry.withValue(registryOption) {
-        f(t)
-      }
-    })
-  }
-
-  def adamMap[U](f: scala.Function1[T, U])(implicit evidence$3: scala.reflect.ClassTag[U]): org.apache.spark.rdd.RDD[U] = {
-    val registryOption = Metrics.Registry.value
-    rdd.map((t: T) => {
-      Metrics.Registry.withValue(registryOption) {
-        f(t)
-      }
-    })
-  }
-
-  def adamKeyBy[K](f: scala.Function1[T, K]): org.apache.spark.rdd.RDD[scala.Tuple2[K, T]] = {
-    val registryOption = Metrics.Registry.value
-    rdd.keyBy((t: T) => {
-      Metrics.Registry.withValue(registryOption) {
-        f(t)
-      }
-    })
-  }
-
-  def adamFlatMap[U](f: scala.Function1[T, scala.TraversableOnce[U]])(implicit evidence$4: scala.reflect.ClassTag[U]): org.apache.spark.rdd.RDD[U] = {
-    val registryOption = Metrics.Registry.value
-    rdd.flatMap((t: T) => {
-      Metrics.Registry.withValue(registryOption) {
-        f(t)
-      }
-    })
   }
 
 }
@@ -186,4 +148,9 @@ class ADAMSpecificRecordSequenceDictionaryRDDAggregator[T <% SpecificRecord: Man
   def getSequenceRecordsFromElement(elem: T): Set[SequenceRecord] = {
     Set(SequenceRecord.fromSpecificRecord(elem))
   }
+}
+
+class InstrumentedADAMAvroParquetOutputFormat extends InstrumentedOutputFormat[Void, IndexedRecord] {
+  override def outputFormatClass(): Class[_ <: NewOutputFormat[Void, IndexedRecord]] = classOf[AvroParquetOutputFormat]
+  override def timerName(): String = WriteADAMRecord.timerName
 }

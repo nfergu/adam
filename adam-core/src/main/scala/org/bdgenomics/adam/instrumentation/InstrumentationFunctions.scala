@@ -6,6 +6,7 @@ import org.bdgenomics.adam.instrumentation.ServoTimer._
 import scala.Some
 import java.io.PrintStream
 import com.netflix.servo.monitor.Monitor
+import org.bdgenomics.adam.instrumentation.TableHeader
 
 /**
  * Helper functions for instrumentation

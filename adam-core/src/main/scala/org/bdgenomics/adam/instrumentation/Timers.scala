@@ -1,14 +1,12 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.bdgenomics.adam.instrumentation.Metrics
-
 /**
  * Contains [[Timers]] that are used to instrument ADAM.
  */
 object Timers extends Metrics {
 
   // File Loading
-  val ADAMLoadInDriver = timer("ADAM Load")
+  val LoadAlignmentRecords = timer("Load Alignment Records")
   val BAMLoad = timer("BAM File Load")
   val ParquetLoad = timer("Parquet File Load")
 

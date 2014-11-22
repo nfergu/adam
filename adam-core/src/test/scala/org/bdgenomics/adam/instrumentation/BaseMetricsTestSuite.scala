@@ -3,7 +3,6 @@ package org.bdgenomics.adam.instrumentation
 import java.io.BufferedReader
 import scala.util.control.Breaks._
 import org.scalatest.FunSuite
-import java.util
 
 class BaseMetricsTestSuite extends FunSuite {
 

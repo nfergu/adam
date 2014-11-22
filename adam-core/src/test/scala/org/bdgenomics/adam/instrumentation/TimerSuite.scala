@@ -31,8 +31,8 @@ class TimerSuite extends FunSuite {
       testingClock.currentTime += 30000
       "Finished!"
     }
-    verify(recorder).startPhase(timer.id, None, isRDDOperation = false)
-    verify(recorder).finishPhase(timer.id, "Timer 1", 30000)
+    verify(recorder).startPhase("Timer 1", None, isRDDOperation = false)
+    verify(recorder).finishPhase("Timer 1", 30000)
     assert(text === "Finished!") // Just make sure the result of the function is returned ok
   }
 

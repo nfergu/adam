@@ -240,7 +240,7 @@ abstract class Metrics(val clock: Clock = new Clock()) extends Serializable {
 
 }
 
-class Clock {
+class Clock extends Serializable {
   def nanoTime() = System.nanoTime()
 }
 
@@ -260,6 +260,8 @@ object Metrics {
   private implicit val accumulableParam = new ServoTimersAccumulableParam()
 
   private var accumulable: Accumulable[ServoTimers, RecordedTiming] = null
+
+  // TODO NF: Ensure that all references to this are optimal when the thread-local is not defined (they don't set it)
 
   final val Recorder = new DynamicVariable[Option[MetricsRecorder]](None)
 
