@@ -71,21 +71,34 @@ class ADAMInstrumentedRDDFunctions[T](self: RDD[T]) extends InstrumentedRDDFunct
     }
   }
 
+  def adamRepartition(numPartitions: Int)(implicit ord: Ordering[T] = null): RDD[T] = {
+    recordOperation {
+      self.repartition(numPartitions)
+    }
+  }
+
+  def adamCoalesce(numPartitions: Int, shuffle: Boolean = false)(implicit ord: Ordering[T] = null): RDD[T] = {
+    recordOperation {
+      self.coalesce(numPartitions, shuffle)
+    }
+  }
+
 }
 
 class ADAMInstrumentedPairRDDFunctions[K, V](self: RDD[(K, V)])(implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null)
     extends InstrumentedRDDFunctions() {
+  implicit val sc = self.sparkContext
   def adamSaveAsNewAPIHadoopFile(path: String, keyClass: Class[_], valueClass: Class[_],
-      outputFormatClass: Class[_ <: InstrumentedOutputFormat[_, _]], conf: Configuration = self.context.hadoopConfiguration) {
+                                 outputFormatClass: Class[_ <: InstrumentedOutputFormat[_, _]], conf: Configuration = self.context.hadoopConfiguration) {
     recordOperation {
-      val recorder = metricsRecorder()
-      instrumentedSaveAsNewAPIHadoopFile(self, recorder, path, keyClass, valueClass, outputFormatClass, conf)
+      instrumentedSaveAsNewAPIHadoopFile(self, path, keyClass, valueClass, outputFormatClass, conf)
     }
   }
 }
 
 class ADAMInstrumentedOrderedRDDFunctions[K: Ordering: ClassTag, V: ClassTag](self: RDD[(K, V)])
     extends InstrumentedRDDFunctions {
+  implicit val sc = self.sparkContext
   def adamSortByKey(ascending: Boolean = true, numPartitions: Int = self.partitions.size): RDD[(K, V)] = {
     recordOperation {
       self.sortByKey(ascending, numPartitions)

@@ -40,7 +40,7 @@ private[rdd] object TrimReads extends Logging {
     val tr = new TrimReads
 
     // get read length
-    val readLength = rdd.first().getSequence.length
+    val readLength = rdd.adamFirst().getSequence.length
 
     // map read quality scores into doubles
     log.info("Collecting read quality scores.")

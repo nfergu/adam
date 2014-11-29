@@ -20,7 +20,7 @@ package org.bdgenomics.adam.rdd
 import java.util.logging.Level
 import org.apache.avro.specific.SpecificRecord
 import org.apache.spark.Logging
-import org.apache.spark.rdd.{InstrumentedOutputFormat, RDD}
+import org.apache.spark.rdd.{ InstrumentedOutputFormat, RDD }
 import org.bdgenomics.adam.instrumentation.Timers._
 import org.bdgenomics.adam.models._
 import org.bdgenomics.adam.rdd.ADAMContext._

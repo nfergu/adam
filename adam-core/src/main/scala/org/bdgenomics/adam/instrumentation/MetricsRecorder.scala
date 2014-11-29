@@ -2,7 +2,7 @@ package org.bdgenomics.adam.instrumentation
 
 import org.apache.spark.Accumulable
 import scala.collection.mutable
-import org.bdgenomics.adam.instrumentation.RecordedTiming
+import scala.throws
 
 /**
  * Allows metrics to be recorded. Currently only timings are supported, but other metrics
@@ -24,11 +24,12 @@ class MetricsRecorder(val accumulable: Accumulable[ServoTimers, RecordedTiming],
   private var previousTopLevelTimerName: String = null
   private var previousTopLevelSequenceId: Int = -1
 
+  @transient private var roots = new mutable.HashMap[TimingPathKey, TimingPath]()
+
   def startPhase(timerName: String, sequenceId: Option[Int] = None, isRDDOperation: Boolean = false) {
     val newSequenceId = generateSequenceId(sequenceId, timerName)
-    val parent = if (timingsStack.isEmpty) None else Some(timingsStack.top)
-    // TODO NF: We could change this to use reference equality for ancestor TimingPaths (is it worth it?)
-    val newPath = new TimingPath(timerName, parent, newSequenceId, isRDDOperation)
+    val key = new TimingPathKey(timerName, newSequenceId, isRDDOperation)
+    val newPath = if (timingsStack.isEmpty) root(key) else timingsStack.top.child(key)
     timingsStack.push(newPath)
   }
 
@@ -49,8 +50,16 @@ class MetricsRecorder(val accumulable: Accumulable[ServoTimers, RecordedTiming],
     new MetricsRecorder(accumulable, Some(this.timingsStack.toList.reverse))
   }
 
+  private def root(key: TimingPathKey) = {
+    // We use object caching here to try to get the same instance of TimingPath each time. The objective is
+    // not to avoid object creation, but to make TimingPath comparisons more efficient when they have
+    // many ancestors (TimingPaths can be compared by reference, rather than having to compare all fields).
+    // This makes a significant different for TimingPaths with many ancestors. For example, it improves
+    // performance by about 1/3 for TimingPaths with 10 ancestors.
+    roots.getOrElseUpdate(key, { new TimingPath(key.timerName, None, key.sequenceId, key.isRDDOperation) })
+  }
+
   private def generateSequenceId(sequenceId: Option[Int], timerName: String): Int = {
-    // TODO NF: Is this too dangerous? We could accidently end up with top-level operations repeated many times
     // If a sequence ID has been specified explicitly, always use that.
     // Always generate a new sequence ID for top-level operations, as we want to display them in sequence.
     // The exception to this is consecutive operations for the same timer, as these are most likely a loop.
@@ -68,6 +77,12 @@ class MetricsRecorder(val accumulable: Accumulable[ServoTimers, RecordedTiming],
         0
       }
     }
+  }
+
+  @throws(classOf[java.io.IOException])
+  private def readObject(in: java.io.ObjectInputStream): Unit = {
+    in.defaultReadObject()
+    roots = new mutable.HashMap[TimingPathKey, TimingPath]()
   }
 
 }

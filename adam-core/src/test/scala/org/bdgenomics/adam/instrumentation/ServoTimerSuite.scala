@@ -63,8 +63,8 @@ class ServoTimerSuite extends FunSuite {
     val timer = createTimer()
     timer.recordMillis(100)
     timer.recordMillis(201)
-    timer.recordMillis(200)
     timer.recordMillis(99)
+    timer.recordMillis(200)
     assert(fromNanos(timer.getMin) === 99)
     assert(fromNanos(getTaggedValue(timer, MinTag).longValue()) === 99)
   }

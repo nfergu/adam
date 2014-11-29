@@ -3,6 +3,7 @@ package org.bdgenomics.adam.instrumentation
 import org.scalatest.FunSuite
 import org.scalatest.mock.MockitoSugar._
 import org.mockito.Mockito.verify
+import org.apache.spark.rdd.Timer
 
 class TimerSuite extends FunSuite {
 

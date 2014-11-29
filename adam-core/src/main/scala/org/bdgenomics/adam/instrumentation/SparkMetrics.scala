@@ -26,7 +26,9 @@ import org.bdgenomics.adam.instrumentation.ValueExtractor._
 import com.netflix.servo.tag.Tag
 import org.bdgenomics.adam.instrumentation.SparkMetrics._
 import scala.concurrent.duration._
-import org.bdgenomics.adam.instrumentation.InstrumentationFunctions.{ createTaskHeader, renderTable, formatNanos }
+import org.bdgenomics.adam.instrumentation.InstrumentationFunctions.{ renderTable, formatNanos }
+import org.bdgenomics.adam.instrumentation.ServoTimer._
+import scala.Some
 
 /**
  * Allows metrics for Spark to be captured and rendered in tabular form.
@@ -114,6 +116,16 @@ abstract class SparkMetrics {
     val baseHeader = createTaskHeader()
     baseHeader.insert(position, header)
     baseHeader
+  }
+
+  private def createTaskHeader(): ArrayBuffer[TableHeader] = {
+    ArrayBuffer(
+      TableHeader(name = "Metric", valueExtractor = forTagValueWithKey(NameTagKey), alignment = Alignment.Left),
+      TableHeader(name = "Total Time", valueExtractor = forMonitorMatchingTag(TotalTimeTag), formatFunction = Some(formatNanos)),
+      TableHeader(name = "Count", valueExtractor = forMonitorMatchingTag(CountTag)),
+      TableHeader(name = "Mean", valueExtractor = forMonitorMatchingTag(MeanTag), formatFunction = Some(formatNanos)),
+      TableHeader(name = "Min", valueExtractor = forMonitorMatchingTag(MinTag), formatFunction = Some(formatNanos)),
+      TableHeader(name = "Max", valueExtractor = forMonitorMatchingTag(MaxTag), formatFunction = Some(formatNanos)))
   }
 
 }

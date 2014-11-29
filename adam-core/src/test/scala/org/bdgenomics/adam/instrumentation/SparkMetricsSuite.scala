@@ -21,9 +21,10 @@ import java.io._
 import org.apache.spark.Logging
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
-import org.bdgenomics.adam.instrumentation.BaseMetricsTestSuite
+import org.bdgenomics.adam.instrumentation.InstrumentationTestingUtil._
+import org.scalatest.FunSuite
 
-class SparkMetricsSuite extends BaseMetricsTestSuite with Logging {
+class SparkMetricsSuite extends FunSuite with Logging {
 
   test("Task metrics are captured correctly") {
 

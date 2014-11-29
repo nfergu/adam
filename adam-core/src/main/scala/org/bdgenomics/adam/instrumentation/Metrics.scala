@@ -15,6 +15,7 @@ import com.netflix.servo.tag.{ Tags, Tag }
 import scala.annotation.tailrec
 import org.bdgenomics.adam.instrumentation.ServoTimer._
 import scala.Some
+import org.apache.spark.rdd.Timer
 
 /**
  * Allows metrics to be created for an application. Currently only timers are supported, but other types of metrics
@@ -28,23 +29,13 @@ import scala.Some
  *   val Operation1 = timer("Operation 1")
  *   val Operation2 = timer("Operation 2")
  * }
- * Timers.initialize(sc)
  * }}}
  *
- * This creates two timers: one for Operation 1, and one for Operation 2, and then initializes the Timers object.
+ * This creates two timers: one for Operation 1, and one for Operation 2.
  *
- * Applications ''must'' call the initialize method, otherwise metrics will not be recorded. Conversely, if an
- * application does not want to record metrics, it can simply avoid calling the initialize method. Attempting
- * to record metrics when the initialize method has not been called will not produce an error, and incurs very
- * little overhead. However, attempting to call the print method to print the metrics in this case will
- * produce an error.
+ * To switch-on recording of metrics for a specific thread, the companion [[Metrics]] object must be used.
  */
 abstract class Metrics(val clock: Clock = new Clock()) extends Serializable {
-
-  // TODO NF: Fix callsite stuff
-
-  // TODO NF: Sort out what should be in the object and what should be in the class, and clarify lifecycle
-
   /**
    * Creates a timer with the specified name.
    */
@@ -52,25 +43,91 @@ abstract class Metrics(val clock: Clock = new Clock()) extends Serializable {
     val timer = new Timer(name, clock)
     timer
   }
+}
+
+/**
+ * Manages recording of metrics in an application. Metrics collection is turned on for a particular thread by
+ * calling the `initialize` method. After `initialize` is called the [[Metrics.Recorder]] field is set, and the
+ * application can use that to record metrics. To print metrics, call the `print` method, and  to stop recording metrics
+ * for a particular thread, call the `stopRecording` method.
+ *
+ * If an application does not want to record metrics, it can simply avoid calling the `initialize` method (or can
+ * call the `stopRecording` method if there is a chance that `initialize` has been called on that thread previously).
+ * Attempting to record metrics when the initialize method has not been called will not produce an error, and incurs very
+ * little overhead. However, attempting to call the print method to print the metrics will produce an error.
+ */
+object Metrics {
+
+  private implicit val accumulableParam = new ServoTimersAccumulableParam()
+
+  private final val TreePathTagKey = "TreePath"
+  private final val BlockingTagKey = "IsBlocking"
+  private final val StageIdTagKey = "StageId"
+  private final val DriverTimeTag = Tags.newTag("statistic", "DriverTime")
+  private final val WorkerTimeTag = Tags.newTag("statistic", "WorkerTime")
+  private final val StageDurationTag = Tags.newTag("statistic", "StageDuration")
+
+  private val sequenceIdGenerator = new AtomicInteger()
+
+  /**
+   * Dynamic variable (thread-local) which allows metrics to be recorded for the current thread. Note that
+   * this will be set to [[None]] if metrics have not been initialized for the current thread, so callers should
+   * deal with this appropriately (normally by avoiding recording any metrics or propagating the recorder
+   * to other threads).
+   */
+  final val Recorder = new DynamicVariable[Option[MetricsRecorder]](None)
+
+  /**
+   * Initializes this instance. This method must be called before recording metrics, otherwise
+   * they will not be recorded.
+   */
+  def initialize(sparkContext: SparkContext) = synchronized {
+    val accumulable = sparkContext.accumulable[ServoTimers, RecordedTiming](new ServoTimers())
+    val metricsRecorder = new MetricsRecorder(accumulable)
+    Metrics.Recorder.value = Some(metricsRecorder)
+  }
+
+  /**
+   * Stops recording metrics for the current thread. This avoids the (slight) overhead of recording metrics
+   * if they are not going to be used. Calling the `print` method after calling this one will result in an
+   * [[IllegalStateException]].
+   */
+  def stopRecording() {
+    Metrics.Recorder.value = None
+  }
 
   /**
    * Prints the metrics recorded by this instance to the specified [[PrintStream]], using the specified
    * [[SparkMetrics]] to print details of any Spark operations that have occurred.
    */
   def print(out: PrintStream, sparkStageTimings: Option[Seq[StageTiming]]) {
-    if (!initialized) {
+    if (!Metrics.Recorder.value.isDefined) {
       throw new IllegalStateException("Trying to print metrics for an uninitialized Metrics class! " +
         "Call the initialize method to initialize it.")
     }
-    val treeRoots = buildTree().toSeq.sortWith((a, b) => { a.timingPath.sequenceId < b.timingPath.sequenceId })
+    val accumulable = Recorder.value.get.accumulable
+    val treeRoots = buildTree(accumulable).toSeq.sortWith((a, b) => { a.timingPath.sequenceId < b.timingPath.sequenceId })
     val treeNodeRows = new mutable.ArrayBuffer[Monitor[_]]()
     treeRoots.foreach(treeNode => { treeNode.addToTable(treeNodeRows) })
     renderTable(out, "Timings", treeNodeRows, createTreeViewHeader())
     out.println()
-    sparkStageTimings.foreach(printRddOperations(out, _))
+    sparkStageTimings.foreach(printRddOperations(out, _, accumulable))
   }
 
-  private def printRddOperations(out: PrintStream, sparkStageTimings: Seq[StageTiming]) {
+  /**
+   * Generates a new sequence ID for operations that we wish to appear in sequence
+   */
+  def generateNewSequenceId(): Int = {
+    val newValue = sequenceIdGenerator.incrementAndGet()
+    if (newValue < 0) {
+      // This really shouldn't happen, but just in case...
+      throw new IllegalStateException("Out of sequence IDs!")
+    }
+    newValue
+  }
+
+  private def printRddOperations(out: PrintStream, sparkStageTimings: Seq[StageTiming],
+                                 accumulable: Accumulable[ServoTimers, RecordedTiming]) {
 
     // First, extract a list of the RDD operations, sorted by sequence ID (the order in which they occurred)
     val sortedRddOperations = accumulable.value.timerMap.filter(_._1.isRDDOperation).toList.sortBy(_._1.sequenceId)
@@ -116,7 +173,7 @@ abstract class Metrics(val clock: Clock = new Clock()) extends Serializable {
       TableHeader(name = "Max", valueExtractor = forMonitorMatchingTag(MaxTag), formatFunction = Some(formatNanos)))
   }
 
-  private def buildTree(): Iterable[TreeNode] = {
+  private def buildTree(accumulable: Accumulable[ServoTimers, RecordedTiming]): Iterable[TreeNode] = {
     val timerPaths: Seq[(TimingPath, ServoTimer)] = accumulable.value.timerMap.toSeq
     val rootNodes = new mutable.LinkedHashMap[TimingPath, TreeNode]
     buildTree(timerPaths, 0, rootNodes)
@@ -242,47 +299,4 @@ abstract class Metrics(val clock: Clock = new Clock()) extends Serializable {
 
 class Clock extends Serializable {
   def nanoTime() = System.nanoTime()
-}
-
-object Metrics {
-
-  private final val TreePathTagKey = "TreePath"
-  private final val BlockingTagKey = "IsBlocking"
-  private final val StageIdTagKey = "StageId"
-  private final val DriverTimeTag = Tags.newTag("statistic", "DriverTime")
-  private final val WorkerTimeTag = Tags.newTag("statistic", "WorkerTime")
-  private final val StageDurationTag = Tags.newTag("statistic", "StageDuration")
-
-  @volatile private var initialized = false
-
-  private val sequenceIdGenerator = new AtomicInteger()
-
-  private implicit val accumulableParam = new ServoTimersAccumulableParam()
-
-  private var accumulable: Accumulable[ServoTimers, RecordedTiming] = null
-
-  // TODO NF: Ensure that all references to this are optimal when the thread-local is not defined (they don't set it)
-
-  final val Recorder = new DynamicVariable[Option[MetricsRecorder]](None)
-
-  /**
-   * Initializes this instance. This method must be called before recording metrics, otherwise
-   * they will not be called.
-   */
-  def initialize(sparkContext: SparkContext) = synchronized {
-    accumulable = sparkContext.accumulable[ServoTimers, RecordedTiming](new ServoTimers())
-    val metricsRecorder = new MetricsRecorder(accumulable)
-    Metrics.Recorder.value = Some(metricsRecorder)
-    initialized = true
-  }
-
-  def generateNewSequenceId(): Int = {
-    val newValue = sequenceIdGenerator.incrementAndGet()
-    if (newValue < 0) {
-      // This really shouldn't happen, but just in case...
-      throw new IllegalStateException("Out of sequence IDs!")
-    }
-    newValue
-  }
-
 }

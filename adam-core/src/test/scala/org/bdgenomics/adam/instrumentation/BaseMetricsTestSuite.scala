@@ -1,13 +1,13 @@
 package org.bdgenomics.adam.instrumentation
 
-import java.io.BufferedReader
+import java.io.{ StringReader, PrintStream, ByteArrayOutputStream, BufferedReader }
 import scala.util.control.Breaks._
 import org.scalatest.FunSuite
 
-class BaseMetricsTestSuite extends FunSuite {
+object InstrumentationTestingUtil extends FunSuite {
 
-  protected def checkTable(name: String, expectedValues: Array[Array[String]], reader: BufferedReader,
-                           prefixString: Option[String] = None) = {
+  def checkTable(name: String, expectedValues: Array[Array[String]], reader: BufferedReader,
+                 prefixString: Option[String] = None) = {
     advanceReaderToName(name, reader)
     var index = 0
     breakable {
@@ -29,7 +29,26 @@ class BaseMetricsTestSuite extends FunSuite {
     }
   }
 
-  protected def advanceReaderToName(name: String, reader: BufferedReader) = {
+  def renderTableFromMetricsObject(sparkStageTimings: Option[Seq[StageTiming]] = None): String = {
+    val bytes = new ByteArrayOutputStream()
+    val out = new PrintStream(bytes)
+    Metrics.print(out, None)
+    bytes.toString("UTF8")
+  }
+
+  def rowsOfTable(table: String): List[String] = {
+    val reader = new BufferedReader(new StringReader(table))
+    Stream.continually(reader.readLine()).takeWhile(_ != null).toList
+  }
+
+  def assertOnNameAndCountInTimingsTable(row: String, name: String, count: Int) = {
+    assert(row contains name)
+    val cells = row.trim().split('|')
+    // The count is in the 4th column and we have empty value at the start
+    assert(cells(4).trim() === String.valueOf(count))
+  }
+
+  private def advanceReaderToName(name: String, reader: BufferedReader) = {
     breakable {
       while (true) {
         val line = reader.readLine()
@@ -43,7 +62,7 @@ class BaseMetricsTestSuite extends FunSuite {
     }
   }
 
-  protected def compareLines(actual: Array[String], expected: Array[String], prefixString: Option[String]) = {
+  private def compareLines(actual: Array[String], expected: Array[String], prefixString: Option[String]) = {
     assert(actual.length === expected.length)
     var expectedIndex = 0
     actual.foreach(actualCell => {

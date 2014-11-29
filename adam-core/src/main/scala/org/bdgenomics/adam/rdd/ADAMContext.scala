@@ -25,7 +25,7 @@ import org.apache.avro.Schema
 import org.apache.avro.specific.SpecificRecord
 import org.apache.hadoop.fs.{ FileSystem, Path }
 import org.apache.hadoop.io.LongWritable
-import org.apache.spark.rdd.{ADAMInstrumentedOrderedRDDFunctions, ADAMInstrumentedPairRDDFunctions, ADAMInstrumentedRDDFunctions, RDD}
+import org.apache.spark.rdd.{ ADAMInstrumentedOrderedRDDFunctions, ADAMInstrumentedPairRDDFunctions, ADAMInstrumentedRDDFunctions, RDD }
 import org.apache.spark.{ Logging, SparkConf, SparkContext }
 import org.bdgenomics.adam.converters.SAMRecordConverter
 import org.bdgenomics.adam.instrumentation.Timers._

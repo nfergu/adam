@@ -19,7 +19,6 @@ package org.bdgenomics.adam.instrumentation
 
 import org.apache.spark.scheduler.{ StageInfo, SparkListenerStageCompleted, SparkListenerTaskEnd, SparkListener }
 import scala.concurrent.duration._
-import org.bdgenomics.adam.instrumentation.TaskContext
 
 /**
  * Spark listener that accumulates metrics in the passed-in [[ADAMMetrics]] object

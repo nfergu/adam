@@ -1,12 +1,13 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.scalatest.BeforeAndAfterAll
+import org.scalatest.{ FunSuite, BeforeAndAfterAll }
 import org.apache.spark.{ SparkConf, Logging, SparkContext }
 import java.io.{ StringReader, BufferedReader, PrintStream, ByteArrayOutputStream }
 import scala.concurrent.duration.Duration
-import org.bdgenomics.adam.instrumentation.BaseMetricsTestSuite
+import org.bdgenomics.adam.instrumentation.InstrumentationTestingUtil._
+import org.apache.spark.rdd.Timer
 
-class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfterAll {
+class MetricsSuite extends FunSuite with Logging with BeforeAndAfterAll {
 
   var sc: SparkContext = null
 
@@ -52,7 +53,7 @@ class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfter
       testingClock.currentTime += 10000000
     }
 
-    val renderedTable = getRenderedTable(testTimers, None)
+    val renderedTable = getRenderedTable(None)
     val reader = new BufferedReader(new StringReader(renderedTable))
 
     // We are using a prefix string here so that we compare the whitespace at the start of the metrics column
@@ -75,7 +76,7 @@ class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfter
       StageTiming(1, Some("RDD Group Operation 2"), Duration.fromNanos(1000000)),
       StageTiming(2, Some("RDD Map Operation 1"), Duration.fromNanos(2000000)))
 
-    val renderedTable = getRenderedTable(testTimers, Some(stageTimings))
+    val renderedTable = renderTableFromMetricsObject(Some(stageTimings))
     // We are using a prefix string here so that we compare the whitespace at the start of the metrics column
     // as well (if we didn't use the prefix it would be trimmed). In other words, we want to compare the actual
     // tree structure and not just the individual metrics.
@@ -173,10 +174,10 @@ class MetricsSuite extends BaseMetricsTestSuite with Logging with BeforeAndAfter
       Array("# └─ Timer 1", "-", "10 ms", "1", "10 ms", "10 ms", "10 ms"))
   }
 
-  private def getRenderedTable(metrics: Metrics, sparkStageTimings: Option[Seq[StageTiming]]): String = {
+  private def getRenderedTable(sparkStageTimings: Option[Seq[StageTiming]]): String = {
     val bytes = new ByteArrayOutputStream()
     val out = new PrintStream(bytes)
-    metrics.print(out, sparkStageTimings)
+    Metrics.print(out, sparkStageTimings)
     val renderedTable = bytes.toString("UTF8")
     renderedTable
   }

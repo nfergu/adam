@@ -2,7 +2,7 @@ package org.bdgenomics.adam.instrumentation
 
 import org.scalatest.{ BeforeAndAfterAll, FunSuite }
 import org.apache.spark.{ Accumulable, SparkConf, SparkContext }
-import org.bdgenomics.adam.instrumentation.{TimingPath, RecordedTiming, ServoTimers, ServoTimersAccumulableParam}
+import org.bdgenomics.adam.instrumentation.{ TimingPath, RecordedTiming, ServoTimers, ServoTimersAccumulableParam }
 
 class ServoTimersAccumulableParamSuite extends FunSuite with BeforeAndAfterAll {
 

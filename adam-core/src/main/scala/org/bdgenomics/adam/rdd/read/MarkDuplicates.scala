@@ -60,7 +60,7 @@ private[rdd] object MarkDuplicates extends Serializable {
     })
   }
 
-  def apply(rdd: RDD[AlignmentRecord]): RDD[AlignmentRecord] = PerformDuplicateMarking.time {
+  def apply(rdd: RDD[AlignmentRecord]): RDD[AlignmentRecord] = {
 
     // Group by library and left position
     def leftPositionAndLibrary(p: (ReferencePositionPair, SingleReadBucket)): (Option[ReferencePositionWithOrientation], String) = {
@@ -72,8 +72,8 @@ private[rdd] object MarkDuplicates extends Serializable {
       p._1.read2refPos
     }
 
-    rdd.adamSingleReadBuckets().keyBy(ReferencePositionPair(_)).groupBy(leftPositionAndLibrary)
-      .flatMap(kv => {
+    rdd.adamSingleReadBuckets().adamKeyBy(ReferencePositionPair(_)).adamGroupBy(leftPositionAndLibrary)
+      .adamFlatMap(kv => PerformDuplicateMarking.time {
 
         val leftPos: Option[ReferencePositionWithOrientation] = kv._1._1
         val readsAtLeftPos: Iterable[(ReferencePositionPair, SingleReadBucket)] = kv._2

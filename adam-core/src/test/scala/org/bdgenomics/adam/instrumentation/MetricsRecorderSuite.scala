@@ -6,7 +6,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.times
 import org.apache.spark.Accumulable
 import org.mockito.ArgumentCaptor
-import org.bdgenomics.adam.instrumentation.{TimingPath, MetricsRecorder, RecordedTiming, ServoTimers}
+import org.bdgenomics.adam.instrumentation.{ TimingPath, MetricsRecorder, RecordedTiming, ServoTimers }
 
 class MetricsRecorderSuite extends FunSuite {
 
