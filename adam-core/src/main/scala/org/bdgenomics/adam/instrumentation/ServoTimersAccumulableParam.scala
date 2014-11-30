@@ -1,8 +1,7 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.apache.spark.AccumulableParam
-import com.netflix.servo.monitor.MonitorConfig
 import java.util.concurrent.ConcurrentHashMap
+import org.apache.spark.AccumulableParam
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 

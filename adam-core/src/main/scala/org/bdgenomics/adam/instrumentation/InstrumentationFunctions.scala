@@ -1,7 +1,7 @@
 package org.bdgenomics.adam.instrumentation
 
-import java.io.PrintStream
 import com.netflix.servo.monitor.Monitor
+import java.io.PrintStream
 
 /**
  * Helper functions for instrumentation

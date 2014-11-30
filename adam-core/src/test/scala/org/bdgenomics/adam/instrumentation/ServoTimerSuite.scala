@@ -17,10 +17,10 @@
  */
 package org.bdgenomics.adam.instrumentation
 
-import org.scalatest.FunSuite
+import com.netflix.servo.tag.{Tag, Tags}
 import java.util.concurrent.TimeUnit
 import org.bdgenomics.adam.instrumentation.ServoTimer._
-import com.netflix.servo.tag.{ Tags, Tag }
+import org.scalatest.FunSuite
 import scala.collection.JavaConversions._
 
 class ServoTimerSuite extends FunSuite {
@@ -75,9 +75,6 @@ class ServoTimerSuite extends FunSuite {
     assert(timer.getMonitors.get(0).getConfig.getTags.getValue("myTag") === null)
     timer.addTag(Tags.newTag("myTag", "tagValue"))
     assert(timer.getConfig.getTags.getValue("myTag") === "tagValue")
-    timer.getMonitors.foreach(subMonitor => {
-      assert(subMonitor.getConfig.getTags.getValue("myTag") === "tagValue")
-    })
   }
 
   test("Nanosecond timings recorded correctly") {

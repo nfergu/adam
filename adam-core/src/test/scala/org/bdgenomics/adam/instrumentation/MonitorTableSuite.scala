@@ -17,11 +17,10 @@
  */
 package org.bdgenomics.adam.instrumentation
 
-import org.scalatest.FunSuite
-import com.netflix.servo.monitor.{ Monitor, MonitorConfig }
+import com.netflix.servo.monitor.Monitor
 import com.netflix.servo.tag.Tags
-import java.io.{ PrintStream, ByteArrayOutputStream }
-import org.bdgenomics.adam.instrumentation.{ ValueExtractor, TableHeader }
+import java.io.{ByteArrayOutputStream, PrintStream}
+import org.scalatest.FunSuite
 
 class MonitorTableSuite extends FunSuite {
 

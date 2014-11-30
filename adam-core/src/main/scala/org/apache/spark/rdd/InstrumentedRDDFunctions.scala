@@ -1,12 +1,11 @@
 package org.apache.spark.rdd
 
-import org.bdgenomics.adam.instrumentation.{ Metrics, MetricsRecorder, Clock }
-import org.apache.spark.util.Utils
-import org.apache.spark.SparkContext._
-import scala.reflect.ClassTag
-import org.apache.hadoop.mapreduce.{ OutputFormat => NewOutputFormat, OutputCommitter, JobContext, RecordWriter, TaskAttemptContext }
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.{ SparkContext, rdd }
+import org.apache.hadoop.mapreduce.{JobContext, OutputCommitter, RecordWriter, TaskAttemptContext, OutputFormat => NewOutputFormat}
+import org.apache.spark.SparkContext._
+import org.apache.spark.util.Utils
+import org.bdgenomics.adam.instrumentation.{Clock, Metrics, MetricsRecorder}
+import scala.reflect.ClassTag
 
 /**
  * Contains functions for instrumenting Spark RDD operations. Classes should typically extend this one and wrap the

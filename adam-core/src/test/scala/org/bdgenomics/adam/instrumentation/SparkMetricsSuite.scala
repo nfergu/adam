@@ -18,11 +18,11 @@
 package org.bdgenomics.adam.instrumentation
 
 import java.io._
-import org.apache.spark.Logging
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration._
+import org.apache.spark.Logging
 import org.bdgenomics.adam.instrumentation.InstrumentationTestingUtil._
 import org.scalatest.FunSuite
+import scala.concurrent.duration._
 
 class SparkMetricsSuite extends FunSuite with Logging {
 
@@ -87,9 +87,6 @@ class SparkMetricsSuite extends FunSuite with Logging {
 
     val renderedTable = getRenderedTable(myMetrics)
     val reader = new BufferedReader(new StringReader(renderedTable))
-
-    val expectedStageDurations = getExpectedStageDurations
-    checkTable("Stage Durations", expectedStageDurations, reader)
 
     val expectedOverallValues = getExpectedOverallValues
     checkTable("Task Timings", expectedOverallValues, reader)

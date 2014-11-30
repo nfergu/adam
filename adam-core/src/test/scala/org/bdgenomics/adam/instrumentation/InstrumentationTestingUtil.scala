@@ -1,8 +1,8 @@
 package org.bdgenomics.adam.instrumentation
 
-import java.io.{ StringReader, PrintStream, ByteArrayOutputStream, BufferedReader }
-import scala.util.control.Breaks._
+import java.io.{BufferedReader, ByteArrayOutputStream, PrintStream, StringReader}
 import org.scalatest.FunSuite
+import scala.util.control.Breaks._
 
 object InstrumentationTestingUtil extends FunSuite {
 
@@ -32,7 +32,7 @@ object InstrumentationTestingUtil extends FunSuite {
   def renderTableFromMetricsObject(sparkStageTimings: Option[Seq[StageTiming]] = None): String = {
     val bytes = new ByteArrayOutputStream()
     val out = new PrintStream(bytes)
-    Metrics.print(out, None)
+    Metrics.print(out, sparkStageTimings)
     bytes.toString("UTF8")
   }
 

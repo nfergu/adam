@@ -1,12 +1,10 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.scalatest.FunSuite
-import org.scalatest.mock.MockitoSugar._
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.times
 import org.apache.spark.Accumulable
 import org.mockito.ArgumentCaptor
-import org.bdgenomics.adam.instrumentation.{ TimingPath, MetricsRecorder, RecordedTiming, ServoTimers }
+import org.mockito.Mockito.{times, verify}
+import org.scalatest.FunSuite
+import org.scalatest.mock.MockitoSugar._
 
 class MetricsRecorderSuite extends FunSuite {
 

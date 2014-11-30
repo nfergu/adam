@@ -1,21 +1,19 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.apache.spark.{ SparkContext, Accumulable }
-import collection.JavaConversions._
-import com.netflix.servo.monitor.{ BasicCompositeMonitor, LongGauge, Monitor, MonitorConfig }
+import com.netflix.servo.monitor.{BasicCompositeMonitor, LongGauge, Monitor, MonitorConfig}
+import com.netflix.servo.tag.{Tag, Tags}
 import java.io.PrintStream
-import scala.collection.mutable
-import org.bdgenomics.adam.instrumentation.InstrumentationFunctions._
-import org.bdgenomics.adam.instrumentation.Metrics._
-import scala.util.DynamicVariable
 import java.util.concurrent.atomic.AtomicInteger
-import scala.collection.mutable.ArrayBuffer
-import org.bdgenomics.adam.instrumentation.ValueExtractor._
-import com.netflix.servo.tag.{ Tags, Tag }
-import scala.annotation.tailrec
-import org.bdgenomics.adam.instrumentation.ServoTimer._
-import scala.Some
 import org.apache.spark.rdd.Timer
+import org.apache.spark.{Accumulable, SparkContext}
+import org.bdgenomics.adam.instrumentation.InstrumentationFunctions._
+import org.bdgenomics.adam.instrumentation.ServoTimer._
+import org.bdgenomics.adam.instrumentation.ValueExtractor._
+import scala.annotation.tailrec
+import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+import scala.util.DynamicVariable
 
 /**
  * Allows metrics to be created for an application. Currently only timers are supported, but other types of metrics
@@ -78,8 +76,8 @@ object Metrics {
   final val Recorder = new DynamicVariable[Option[MetricsRecorder]](None)
 
   /**
-   * Initializes this instance. This method must be called before recording metrics, otherwise
-   * they will not be recorded.
+   * Starts recording metrics for this thread. Any previously-recorded metrics for this thread will be cleared.
+   * This method must always be called before recording metrics.
    */
   def initialize(sparkContext: SparkContext) = synchronized {
     val accumulable = sparkContext.accumulable[ServoTimers, RecordedTiming](new ServoTimers())

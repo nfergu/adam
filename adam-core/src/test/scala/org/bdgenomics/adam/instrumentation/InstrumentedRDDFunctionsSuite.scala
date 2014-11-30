@@ -1,14 +1,14 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.apache.spark.rdd._
-import org.apache.hadoop.mapreduce.OutputFormat
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat
 import java.io._
 import org.apache.commons.io.FileUtils
-import scala.collection.JavaConversions._
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.mapreduce.OutputFormat
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat
+import org.apache.spark.rdd._
 import org.bdgenomics.adam.instrumentation.InstrumentationTestingUtil._
 import org.bdgenomics.adam.util.SparkFunSuite
+import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 
 class InstrumentedRDDFunctionsSuite extends SparkFunSuite {

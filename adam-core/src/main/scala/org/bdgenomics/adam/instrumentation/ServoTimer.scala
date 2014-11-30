@@ -17,17 +17,16 @@
  */
 package org.bdgenomics.adam.instrumentation
 
-import com.netflix.servo.monitor.{ Gauge, Monitor, MonitorConfig, CompositeMonitor }
-import java.util
-import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.TimeUnit
-import scala.collection.JavaConversions._
+import com.netflix.servo.monitor.{CompositeMonitor, Gauge, Monitor, MonitorConfig}
 import com.netflix.servo.tag.Tags.newTag
-import com.netflix.servo.tag.{ Tags, Tag }
-import org.bdgenomics.adam.instrumentation.ServoTimer._
-import scala.collection.mutable
+import com.netflix.servo.tag.{Tag, Tags}
+import java.util
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeUnit._
-import java.io.ObjectInputStream
+import java.util.concurrent.atomic.AtomicLong
+import org.bdgenomics.adam.instrumentation.ServoTimer._
+import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 /**
  * Timer that implements the [[com.netflix.servo.monitor.CompositeMonitor]] interface.

@@ -1,18 +1,12 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.scalatest.{ BeforeAndAfterAll, FunSuite }
-import org.apache.spark.{ Accumulable, SparkConf, SparkContext }
-import org.bdgenomics.adam.instrumentation.{ TimingPath, RecordedTiming, ServoTimers, ServoTimersAccumulableParam }
+import org.apache.spark.Accumulable
+import org.bdgenomics.adam.util.SparkFunSuite
+import org.scalatest.BeforeAndAfterAll
 
-class ServoTimersAccumulableParamSuite extends FunSuite with BeforeAndAfterAll {
+class ServoTimersAccumulableParamSuite extends SparkFunSuite with BeforeAndAfterAll {
 
-  var sc: SparkContext = null
-
-  override def beforeAll() {
-    sc = new SparkContext("local[1]", "myapp", new SparkConf())
-  }
-
-  test("Values accumulated correctly") {
+  sparkTest("Values accumulated correctly") {
 
     implicit val accumulableParam = new ServoTimersAccumulableParam()
 
@@ -52,7 +46,7 @@ class ServoTimersAccumulableParamSuite extends FunSuite with BeforeAndAfterAll {
 
   }
 
-  test("Paths with different properties are treated as distinct timers") {
+  sparkTest("Paths with different properties are treated as distinct timers") {
 
     implicit val accumulableParam = new ServoTimersAccumulableParam()
 
@@ -83,7 +77,7 @@ class ServoTimersAccumulableParamSuite extends FunSuite with BeforeAndAfterAll {
 
   }
 
-  test("Accumulable params can be merged together") {
+  sparkTest("Accumulable params can be merged together") {
 
     implicit val accumulableParam = new ServoTimersAccumulableParam()
 

@@ -2,7 +2,6 @@ package org.bdgenomics.adam.instrumentation
 
 import org.apache.spark.Accumulable
 import scala.collection.mutable
-import scala.throws
 
 /**
  * Allows metrics to be recorded. Currently only timings are supported, but other metrics

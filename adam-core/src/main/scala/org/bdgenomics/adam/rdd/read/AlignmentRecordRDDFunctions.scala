@@ -25,7 +25,7 @@ import org.seqdoop.hadoop_bam.SAMRecordWritable
 import org.apache.hadoop.io.LongWritable
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.{ InstrumentedOutputFormat, RDD }
+import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.algorithms.consensus.{
   ConsensusGenerator,
   ConsensusGeneratorFromReads
@@ -42,8 +42,6 @@ import org.bdgenomics.adam.rdd.read.recalibration.BaseQualityRecalibration
 import org.bdgenomics.adam.rich.RichAlignmentRecord
 import org.bdgenomics.adam.util.MapTools
 import org.bdgenomics.formats.avro._
-import org.bdgenomics.adam.instrumentation.Timers
-import org.apache.hadoop.mapreduce.OutputFormat
 
 class AlignmentRecordRDDFunctions(rdd: RDD[AlignmentRecord])
     extends ADAMSequenceDictionaryRDDAggregator[AlignmentRecord](rdd) {

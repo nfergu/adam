@@ -17,18 +17,16 @@
  */
 package org.bdgenomics.adam.instrumentation
 
-import scala.collection.mutable
-import com.netflix.servo.monitor.{ Monitor, LongGauge, MonitorConfig }
-import java.io.PrintStream
-import scala.collection.mutable.ArrayBuffer
-import com.netflix.servo.tag.Tags.newTag
-import org.bdgenomics.adam.instrumentation.ValueExtractor._
 import com.netflix.servo.tag.Tag
-import org.bdgenomics.adam.instrumentation.SparkMetrics._
-import scala.concurrent.duration._
-import org.bdgenomics.adam.instrumentation.InstrumentationFunctions.{ renderTable, formatNanos }
+import com.netflix.servo.tag.Tags.newTag
+import java.io.PrintStream
+import org.bdgenomics.adam.instrumentation.InstrumentationFunctions.{formatNanos, renderTable}
 import org.bdgenomics.adam.instrumentation.ServoTimer._
-import scala.Some
+import org.bdgenomics.adam.instrumentation.SparkMetrics._
+import org.bdgenomics.adam.instrumentation.ValueExtractor._
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.duration._
 
 /**
  * Allows metrics for Spark to be captured and rendered in tabular form.

@@ -1,21 +1,16 @@
 package org.bdgenomics.adam.instrumentation
 
-import org.scalatest.{ FunSuite, BeforeAndAfterAll }
-import org.apache.spark.{ SparkConf, Logging, SparkContext }
-import java.io.{ StringReader, BufferedReader, PrintStream, ByteArrayOutputStream }
-import scala.concurrent.duration.Duration
-import org.bdgenomics.adam.instrumentation.InstrumentationTestingUtil._
+import java.io.{BufferedReader, ByteArrayOutputStream, PrintStream, StringReader}
+import org.apache.spark.Logging
 import org.apache.spark.rdd.Timer
+import org.bdgenomics.adam.instrumentation.InstrumentationTestingUtil._
+import org.bdgenomics.adam.util.SparkFunSuite
+import org.scalatest.BeforeAndAfterAll
+import scala.concurrent.duration.Duration
 
-class MetricsSuite extends FunSuite with Logging with BeforeAndAfterAll {
+class MetricsSuite extends SparkFunSuite with Logging with BeforeAndAfterAll {
 
-  var sc: SparkContext = null
-
-  override def beforeAll() {
-    sc = new SparkContext("local[1]", "myapp", new SparkConf())
-  }
-
-  test("Timer metrics are computed correctly") {
+  sparkTest("Timer metrics are computed correctly") {
 
     val testingClock = new TestingClock()
 
@@ -63,7 +58,7 @@ class MetricsSuite extends FunSuite with Logging with BeforeAndAfterAll {
 
   }
 
-  test("Timer metrics are computed correctly for RDD operations") {
+  sparkTest("Timer metrics are computed correctly for RDD operations") {
 
     val testingClock = new TestingClock()
 

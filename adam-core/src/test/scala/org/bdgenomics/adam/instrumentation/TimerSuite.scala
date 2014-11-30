@@ -1,9 +1,9 @@
 package org.bdgenomics.adam.instrumentation
 
+import org.apache.spark.rdd.Timer
+import org.mockito.Mockito.verify
 import org.scalatest.FunSuite
 import org.scalatest.mock.MockitoSugar._
-import org.mockito.Mockito.verify
-import org.apache.spark.rdd.Timer
 
 class TimerSuite extends FunSuite {
 
@@ -22,8 +22,9 @@ class TimerSuite extends FunSuite {
   test("Function times are recorded correctly with thread-local recorder") {
     val testingClock = new TestingClock()
     val recorder = mock[MetricsRecorder]
-    Metrics.Recorder.value = Some(recorder)
-    doTest(testingClock, recorder, None)
+    Metrics.Recorder.withValue(Some(recorder)) {
+      doTest(testingClock, recorder, None)
+    }
   }
 
   def doTest(testingClock: TestingClock, recorder: MetricsRecorder, explicitRecorder: Option[MetricsRecorder]) {

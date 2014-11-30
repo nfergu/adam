@@ -1,6 +1,6 @@
 package org.apache.spark.rdd
 
-import org.bdgenomics.adam.instrumentation.{ Metrics, MetricsRecorder, Clock }
+import org.bdgenomics.adam.instrumentation.{Clock, Metrics, MetricsRecorder}
 
 /**
  * Represents a timer, for timing a function. Call the `time` function, passing the function to time.

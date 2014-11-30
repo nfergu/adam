@@ -17,9 +17,8 @@
  */
 package org.bdgenomics.adam.instrumentation
 
-import java.io.{ PrintStream, ByteArrayOutputStream }
+import java.io.{ByteArrayOutputStream, PrintStream}
 import org.scalatest.FunSuite
-import org.bdgenomics.adam.instrumentation.ASCIITableHeader
 
 class ASCIITableSuite extends FunSuite {
 

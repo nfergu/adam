@@ -1,9 +1,9 @@
 package org.apache.spark.rdd
 
-import scala.reflect.ClassTag
-import org.bdgenomics.adam.instrumentation._
-import org.apache.spark.SparkContext._
 import org.apache.hadoop.conf.Configuration
+import org.apache.spark.SparkContext._
+import org.bdgenomics.adam.instrumentation._
+import scala.reflect.ClassTag
 
 class ADAMInstrumentedRDDFunctions[T](self: RDD[T]) extends InstrumentedRDDFunctions() {
 
