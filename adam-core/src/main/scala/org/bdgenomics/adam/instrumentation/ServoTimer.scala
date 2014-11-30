@@ -17,9 +17,9 @@
  */
 package org.bdgenomics.adam.instrumentation
 
-import com.netflix.servo.monitor.{CompositeMonitor, Gauge, Monitor, MonitorConfig}
+import com.netflix.servo.monitor.{ CompositeMonitor, Gauge, Monitor, MonitorConfig }
 import com.netflix.servo.tag.Tags.newTag
-import com.netflix.servo.tag.{Tag, Tags}
+import com.netflix.servo.tag.{ Tag, Tags }
 import java.util
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeUnit._

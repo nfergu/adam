@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.adam.instrumentation
 
-import com.netflix.servo.monitor.{CompositeMonitor, Monitor}
+import com.netflix.servo.monitor.{ CompositeMonitor, Monitor }
 import com.netflix.servo.tag.Tag
 import java.io.PrintStream
 import scala.collection.JavaConversions._

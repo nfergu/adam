@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.adam.instrumentation
 
-import com.netflix.servo.tag.{Tag, Tags}
+import com.netflix.servo.tag.{ Tag, Tags }
 import java.util.concurrent.TimeUnit
 import org.bdgenomics.adam.instrumentation.ServoTimer._
 import org.scalatest.FunSuite

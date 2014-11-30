@@ -19,7 +19,7 @@ package org.bdgenomics.adam.instrumentation
 
 import com.netflix.servo.monitor.Monitor
 import com.netflix.servo.tag.Tags
-import java.io.{ByteArrayOutputStream, PrintStream}
+import java.io.{ ByteArrayOutputStream, PrintStream }
 import org.scalatest.FunSuite
 
 class MonitorTableSuite extends FunSuite {
