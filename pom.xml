@@ -254,6 +254,8 @@
             <arg>-unchecked</arg>
             <arg>-optimise</arg>
             <arg>-deprecation</arg>
+            <arg>-encoding</arg>
+            <arg>UTF-8</arg>
           </args>
           <jvmArgs>
             <jvmArg>-Xms64m</jvmArg>
@@ -518,6 +520,8 @@
                 <arg>-optimise</arg>
                 <arg>-deprecation</arg>
                 <arg>-Xlog-implicits</arg>
+                <arg>-encoding</arg>
+                <arg>UTF-8</arg>
               </args>
               <jvmArgs>
                 <jvmArg>-Xms64m</jvmArg>
