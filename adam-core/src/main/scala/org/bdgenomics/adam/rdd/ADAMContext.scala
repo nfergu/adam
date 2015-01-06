@@ -17,7 +17,9 @@
  */
 package org.bdgenomics.adam.rdd
 
-import org.apache.spark.rdd.RDD
+import java.util
+import org.apache.hadoop.mapreduce.{RecordReader, InputSplit, InputFormat, OutputCommitter, JobContext, RecordWriter, TaskAttemptContext, OutputFormat}
+import org.apache.spark.rdd.{Timer, RDD}
 import org.bdgenomics.adam.instrumentation.Metrics
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader
 import org.seqdoop.hadoop_bam.{ AnySAMInputFormat, SAMRecordWritable }
@@ -127,7 +129,7 @@ class ADAMContext(val sc: SparkContext) extends Serializable with Logging {
 
     val records = sc.newAPIHadoopFile(
       filePath,
-      classOf[ParquetInputFormat[T]],
+      classOf[InstrumentedInputFormat[T]],
       classOf[Void],
       manifest[T].runtimeClass.asInstanceOf[Class[T]],
       ContextUtil.getConfiguration(job)
@@ -303,4 +305,28 @@ class ADAMContext(val sc: SparkContext) extends Serializable with Logging {
       matches.toSeq ++ recurse.flatMap(p => findFiles(p, regex))
     }
   }
+}
+
+class InstrumentedInputFormat[V] extends InputFormat[Void, V] {
+  val delegate = new ParquetInputFormat[V]()
+  override def getSplits(context: JobContext): util.List[InputSplit] = delegate.getSplits(context)
+  override def createRecordReader(split: InputSplit, context: TaskAttemptContext): RecordReader[Void, V] =
+      new InstrumentedRecordReader[Void, V](delegate.createRecordReader(split, context))
+}
+
+private class InstrumentedRecordReader[K, V](delegate: RecordReader[K, V]) extends RecordReader[K, V] {
+  override def initialize(split: InputSplit, context: TaskAttemptContext): Unit = delegate.initialize(split, context)
+  override def getProgress: Float = delegate.getProgress
+  override def nextKeyValue(): Boolean = delegate.nextKeyValue()
+  override def getCurrentValue: V = {
+    val currentValue = delegate.getCurrentValue
+    println("Current value [" + currentValue + "]")
+    currentValue
+  }
+  override def getCurrentKey: K = {
+    val currentKey = delegate.getCurrentKey
+    println("Current value [" + currentKey + "]")
+    currentKey
+  }
+  override def close(): Unit = delegate.close()
 }
