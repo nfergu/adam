@@ -64,9 +64,15 @@ class BaseQualityRecalibration(
         !residue.isInsertion &&
         !knownSnps.value.isMasked(residue)
 
-    def observe(read: DecadentRead): Seq[(CovariateKey, Residue)] =
-      covariates(read).zip(read.residues).
-        filter { case (key, residue) => shouldIncludeResidue(residue) }
+    def observe(read: DecadentRead): Seq[(CovariateKey, Residue)] = {
+      val ret = covariates(read).zip(read.residues).filter{ case (key, residue) => shouldIncludeResidue(residue)}
+//      System.out.println("")
+//      System.out.println("-----------------")
+//      System.out.println("RESIDUES FOR READ")
+//      System.out.println("-----------------")
+//      ret.foreach(System.out.println(_))
+      ret
+    }
 
     input.filter(shouldIncludeRead).flatMap(observe)
   }
@@ -82,6 +88,8 @@ class BaseQualityRecalibration(
       map { case (key, residue) => (key, Observation(residue.isSNP)) }.
       aggregate(ObservationAccumulator(covariates))(_ += _, _ ++= _).result
   }
+
+  observed.entries.foreach(e => {println("Key: [" + e._1 + "]; Value = [" + e._2 + "]")})
 
   dumpObservationTableFile.foreach(p => {
     val writer = new PrintWriter(new File(p))

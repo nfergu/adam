@@ -129,7 +129,7 @@ class ADAMContext(val sc: SparkContext) extends Serializable with Logging {
 
     val records = sc.newAPIHadoopFile(
       filePath,
-      classOf[InstrumentedInputFormat[T]],
+      classOf[ParquetInputFormat[T]],
       classOf[Void],
       manifest[T].runtimeClass.asInstanceOf[Class[T]],
       ContextUtil.getConfiguration(job)
@@ -320,12 +320,12 @@ private class InstrumentedRecordReader[K, V](delegate: RecordReader[K, V]) exten
   override def nextKeyValue(): Boolean = delegate.nextKeyValue()
   override def getCurrentValue: V = {
     val currentValue = delegate.getCurrentValue
-    println("Current value [" + currentValue + "]")
+    println("Current value [" + currentValue + "] for class [" + currentValue.getClass + "]")
     currentValue
   }
   override def getCurrentKey: K = {
     val currentKey = delegate.getCurrentKey
-    println("Current value [" + currentKey + "]")
+    println("Current key [" + currentKey + "]")
     currentKey
   }
   override def close(): Unit = delegate.close()

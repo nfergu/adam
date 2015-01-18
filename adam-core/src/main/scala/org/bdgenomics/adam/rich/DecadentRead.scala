@@ -112,6 +112,11 @@ class DecadentRead(val record: RichAlignmentRecord) extends Logging {
     def referencePosition: ReferencePosition =
       referencePositionOption.getOrElse(
         throw new IllegalArgumentException("Residue has no reference location (may be an insertion)"))
+
+    override def toString: String = {
+//      return "[Residue: base=" + base + "; quality=" + quality + "; isSNP=" + isSNP + "]"
+      return "[Residue]"
+    }
   }
 
   lazy val readGroup: String = record.getRecordGroupName.toString

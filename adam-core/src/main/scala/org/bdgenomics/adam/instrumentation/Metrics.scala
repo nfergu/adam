@@ -267,7 +267,14 @@ object Metrics {
     }
 
     private def subtractTimingFromAncestors(totalTime: Long) {
-      timer.adjustTotalTime(-totalTime)
+      // There is a small possibility that we will end up with a negative duration here, due to timing precision.
+      // If we would end up with a negative value just set it to zero.
+//      if (timer.getTotalTime - totalTime >= 0) {
+        timer.adjustTotalTime(-totalTime)
+//      }
+//      else {
+//        timer.adjustTotalTime(-timer.getTotalTime)
+//      }
       parent.foreach(_.subtractTimingFromAncestors(totalTime))
     }
 

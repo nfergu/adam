@@ -28,7 +28,7 @@ import org.bdgenomics.adam.rdd.ADAMSaveAnyArgs
 import org.bdgenomics.adam.rdd.read.AlignmentRecordContext._
 import org.bdgenomics.adam.rdd.variation.VariationContext._
 import org.bdgenomics.adam.rich.RichVariant
-import org.bdgenomics.formats.avro.{Genotype, AlignmentRecord}
+import org.bdgenomics.formats.avro.{Variant, Genotype, AlignmentRecord}
 import org.kohsuke.args4j.{ Argument, Option => Args4jOption }
 
 object Transform extends ADAMCommandCompanion {
@@ -87,6 +87,8 @@ class TransformArgs extends Args4jBase with ADAMSaveAnyArgs with ParquetArgs {
   var coalesce: Int = -1
   @Args4jOption(required = false, name = "-sort_fastq_output", usage = "Sets whether to sort the FASTQ output, if saving as FASTQ. False by default. Ignored if not saving as FASTQ.")
   var sortFastqOutput: Boolean = false
+  @Args4jOption(required = false, name = "-sample", usage = "Set the fraction to sample to")
+  var sample: Double = -1.0d
 }
 
 class Transform(protected val args: TransformArgs) extends ADAMSparkCommand[TransformArgs] with Logging {
@@ -96,6 +98,11 @@ class Transform(protected val args: TransformArgs) extends ADAMSparkCommand[Tran
 
     var adamRecords = rdd
     val sc = rdd.context
+
+    if (args.sample > 0.0d) {
+      log.info("Sampling to '%d' records".format(args.repartition))
+      adamRecords = adamRecords.sample(withReplacement = false, fraction = args.sample)
+    }
 
     if (args.repartition != -1) {
       log.info("Repartitioning reads to to '%d' partitions".format(args.repartition))
@@ -163,9 +170,9 @@ class Transform(protected val args: TransformArgs) extends ADAMSparkCommand[Tran
   private def createKnownSnpsTable(sc: SparkContext): SnpTable = CreateKnownSnpsTable.time {
     val variants: RDD[RichVariant] =
       if (args.knownSnpsFile.endsWith(".adam")) {
-        val adamGTs: RDD[Genotype] = sc.adamLoad(args.knownSnpsFile)
-        printf("Loaded %d records", adamGTs.count())
-        adamGTs.toVariantContext().map(_.variant)
+        val adamGTs: RDD[Variant] = sc.adamLoad(args.knownSnpsFile)
+        printf("Loaded %d variant records", adamGTs.count())
+        adamGTs.map(new RichVariant(_))
       }
       else {
         sc.adamVCFLoad(args.knownSnpsFile).map(_.variant)

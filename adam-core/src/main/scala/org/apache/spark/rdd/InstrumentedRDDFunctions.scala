@@ -22,10 +22,13 @@ import scala.reflect.ClassTag
 /**
  * Functions which permit creation of instrumented RDDs, as well as the ability to stop instrumentation by
  * calling the `unInstrument` method. For more details and usage instructions see the [[MetricsContext]] class.
+ *
+ * Calling the `instrument` on an already-instrumented RDD has no effect.
  */
 class InstrumentedRDDFunctions[T: ClassTag](self: RDD[T]) {
-  def instrument(): RDD[T] = {
-    InstrumentedRDD.instrument(self)
+  def instrument(): RDD[T] = self match {
+    case instrumentedRDD: InstrumentedRDD[T] => self
+    case _                                   => InstrumentedRDD.instrument(self)
   }
   def unInstrument(): RDD[T] = self match {
     case instrumentedRDD: InstrumentedRDD[T] => instrumentedRDD.decoratedRDD

@@ -17,6 +17,7 @@
  */
 package org.bdgenomics.adam.rdd.read.recalibration
 
+import org.bdgenomics.adam.instrumentation.Timers._
 import org.bdgenomics.adam.util.QualityScore
 import org.bdgenomics.adam.util.Util
 import scala.collection.mutable
@@ -133,10 +134,11 @@ class ObservationTable(
 class ObservationAccumulator(val space: CovariateSpace) extends Serializable {
   private val entries = mutable.HashMap[CovariateKey, Observation]()
 
-  def +=(that: (CovariateKey, Observation)): ObservationAccumulator =
+  def +=(that: (CovariateKey, Observation)): ObservationAccumulator = ObservationAccumulatorSeq.time {
     accum(that._1, that._2)
+  }
 
-  def ++=(that: ObservationAccumulator): ObservationAccumulator = {
+  def ++=(that: ObservationAccumulator): ObservationAccumulator = ObservationAccumulatorComb.time {
     if (this.space != that.space)
       throw new IllegalArgumentException("Can only combine observations with matching CovariateSpaces")
     that.entries.foreach { case (k, v) => accum(k, v) }

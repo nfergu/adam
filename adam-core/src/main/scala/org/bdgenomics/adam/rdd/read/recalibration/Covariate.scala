@@ -91,7 +91,7 @@ class CovariateKey(
  */
 class CovariateSpace(val extras: IndexedSeq[Covariate]) extends Serializable {
   // Computes the covariate values for all residues in this read
-  def apply(read: DecadentRead): Seq[CovariateKey] = {
+  def apply(read: DecadentRead): Seq[CovariateKey] =  {
     // Ask each 'extra' covariate to compute its values for this read
     val extraVals = extras.map(cov => {
       val result = cov(read)
