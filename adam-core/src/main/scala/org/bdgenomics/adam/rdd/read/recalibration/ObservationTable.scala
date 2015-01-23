@@ -21,6 +21,7 @@ import org.bdgenomics.adam.instrumentation.Timers._
 import org.bdgenomics.adam.util.QualityScore
 import org.bdgenomics.adam.util.Util
 import scala.collection.mutable
+import scala.collection.JavaConversions._
 
 /**
  * An empirical frequency count of mismatches from the reference.
@@ -132,7 +133,7 @@ class ObservationTable(
 }
 
 class ObservationAccumulator(val space: CovariateSpace) extends Serializable {
-  private val entries = mutable.HashMap[CovariateKey, Observation]()
+  private val entries = new java.util.HashMap[CovariateKey, Observation]()
 
   def +=(that: (CovariateKey, Observation)): ObservationAccumulator = ObservationAccumulatorSeq.time {
     accum(that._1, that._2)

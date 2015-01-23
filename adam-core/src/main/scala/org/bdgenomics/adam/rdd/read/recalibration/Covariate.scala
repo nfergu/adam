@@ -17,6 +17,7 @@
  */
 package org.bdgenomics.adam.rdd.read.recalibration
 
+import org.bdgenomics.adam.instrumentation.Timers.ComputeCovariates
 import org.bdgenomics.adam.rich.DecadentRead
 import org.bdgenomics.adam.util.QualityScore
 import org.bdgenomics.adam.util.Util
@@ -45,6 +46,10 @@ trait Covariate {
 
   def apply(read: DecadentRead): Seq[Option[Value]] = compute(read)
 
+  def getTheValue(flag: Boolean): Option[Value] = getValue(flag)
+
+  def getValue(flag: Boolean): Option[Value]
+
   // Format the provided Value to be compatible with GATK's CSV output
   def toCSV(option: Option[Value]): String = option match {
     case None        => "(none)"
@@ -63,7 +68,7 @@ abstract class AbstractCovariate[ValueT] extends Covariate with Serializable {
  * Represents a tuple containing a value for each covariate.
  *
  * The values for mandatory covariates are stored in member fields and optional
- * covariate valuess are in `extras`.
+ * covariate values are in `extras`.
  */
 class CovariateKey(
     val readGroup: String,
@@ -82,7 +87,14 @@ class CovariateKey(
     case _ => false
   }
 
-  override def hashCode = Util.hashCombine(0xD20D1E51, parts.hashCode)
+  override def hashCode(): Int = {
+    var result = 17
+    result = 31 * result + readGroup.hashCode
+    result = 31 * result + quality.hashCode
+    result = 31 * result + extras.hashCode
+    result
+  }
+
 }
 
 /**
@@ -91,7 +103,7 @@ class CovariateKey(
  */
 class CovariateSpace(val extras: IndexedSeq[Covariate]) extends Serializable {
   // Computes the covariate values for all residues in this read
-  def apply(read: DecadentRead): Seq[CovariateKey] =  {
+  def apply(read: DecadentRead): Seq[CovariateKey] = ComputeCovariates.time {
     // Ask each 'extra' covariate to compute its values for this read
     val extraVals = extras.map(cov => {
       val result = cov(read)

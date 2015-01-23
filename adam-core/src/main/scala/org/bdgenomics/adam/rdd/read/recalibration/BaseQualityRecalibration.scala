@@ -89,7 +89,9 @@ class BaseQualityRecalibration(
       aggregate(ObservationAccumulator(covariates))(_ += _, _ ++= _).result
   }
 
-  observed.entries.foreach(e => {println("Key: [" + e._1 + "]; Value = [" + e._2 + "]")})
+//  observed.entries.foreach(e => {println("Key: [" + e._1 + "]; Value = [" + e._2 + "]")})
+
+  println("OBSERVATION TABLE SIZE: " + observed.entries.size)
 
   dumpObservationTableFile.foreach(p => {
     val writer = new PrintWriter(new File(p))

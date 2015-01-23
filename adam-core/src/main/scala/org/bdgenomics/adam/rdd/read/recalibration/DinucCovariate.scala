@@ -73,4 +73,6 @@ class DinucCovariate extends AbstractCovariate[(Char, Char)] {
   }
 
   override def hashCode = 0x9EAC50CB
+
+  override def getValue(flag: Boolean): Option[(Char, Char)] = Some(('T', 'A'))
 }

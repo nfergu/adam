@@ -29,8 +29,11 @@ class Recalibrator(val table: RecalibrationTable, val minAcceptableQuality: Qual
 
   def apply(read: DecadentRead): AlignmentRecord = RecalibrateRead.time {
     val record: AlignmentRecord = read.record
+    val qualityScore = QualityScore.toString(computeQual(read))
+//    println("Old quality score = " + record.getQual)
+//    println("New quality score = " + qualityScore)
     AlignmentRecord.newBuilder(record).
-      setQual(QualityScore.toString(computeQual(read))).
+      setQual(qualityScore).
       setOrigQual(record.getQual).
       build()
   }

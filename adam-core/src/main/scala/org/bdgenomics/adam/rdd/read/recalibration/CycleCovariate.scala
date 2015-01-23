@@ -51,5 +51,7 @@ class CycleCovariate extends AbstractCovariate[Int] {
   }
 
   override def hashCode = 0x83EFAB61
+
+  override def getValue(flag: Boolean): Option[Value] = Some(1)
 }
 
