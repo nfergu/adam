@@ -81,13 +81,26 @@ class CovariateKey(
 
   override def toString: String = "[" + parts.mkString(", ") + "]"
 
-  override def equals(other: Any) = other match {
+  def toCsv: String = parts.mkString(", ")
+
+  override def equals(other: Any): Boolean = other match {
     case that: CovariateKey =>
-      this.readGroup == that.readGroup && this.quality == that.quality && this.extras == that.extras
+      if (this eq that) {
+        true
+      }
+      else {
+        this.readGroup == that.readGroup && this.quality == that.quality && this.extras == that.extras
+      }
     case _ => false
   }
 
+//  val computedHashCode = doHashCode()
+
   override def hashCode(): Int = {
+    doHashCode()
+  }
+
+  def doHashCode(): Int = {
     var result = 17
     result = 31 * result + readGroup.hashCode
     result = 31 * result + quality.hashCode

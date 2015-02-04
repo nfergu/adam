@@ -5,6 +5,7 @@ import org.bdgenomics.adam.rich.DecadentRead
 import org.bdgenomics.adam.util.QualityScore
 import scala.collection.mutable
 import scala.util.Random
+import scala.collection.JavaConversions._
 
 /**
  * Created by nferguson on 1/21/15.
@@ -15,7 +16,9 @@ object ObservationAccumulatorTester {
 
   val bases = Array('C', 'G', 'T', 'A', 'N')
 
-  private val entries = new java.util.HashMap[Int, Observation](10000000)
+  private val entries = new java.util.HashMap[Int, Observation](300000)
+
+  private val keys = new java.util.HashMap[CovariateKey, CovariateKey](300000)
 
   def main(args: Array[String]): Unit = {
 
@@ -33,19 +36,29 @@ object ObservationAccumulatorTester {
 
     var totalTime = 0L
 
+    println("WAITING TO START...")
+
+    Thread.sleep(30000)
+
+    println("STARTED!")
+
     var i = 0
     while (i < iterations) {
+      val readGroup = ("notinterned" + (if (rand.nextBoolean()) "a" else "b"))
       val quality = QualityScore(rand.nextInt(50))
-      val key = new CovariateKey("a".intern(), QualityScore(1), Seq(testCovariate.getValue(true), testCovariate.getValue(false)))
+//      val key = new CovariateKey(readGroup, quality, Seq(testCovariate.getValue(true), testCovariate.getValue(false)))
+      val key = new CovariateKey(readGroup, quality, Seq(testCovariate.getValue(true), testCovariate.getValue(false)))
+//      val key = keys.getOrElseUpdate(theKey, theKey)
 //      val key = rand.nextInt(10000000)
 //      val obs = new Observation(1, 1)
+      val obs = new Observation(1, 1)
       val start = System.nanoTime()
 //      var existing = entries.get(key)
 //      if (existing == null) {
 //        existing = Observation.empty
 //      }
 //      entries.put(key, obs + existing)
-      accumulator.accum(key, new Observation(1, 1))
+      accumulator.+=((key, obs))
       val end = System.nanoTime()
       totalTime = totalTime + (end - start)
       i = i + 1
@@ -67,7 +80,11 @@ object ObservationAccumulatorTester {
   private class MyTestCovariate extends AbstractCovariate[Any] {
     override def getValue(flag: Boolean): Option[Value] = {
       if (flag) {
-        Some((bases(rand.nextInt(5)), bases(rand.nextInt(5))))
+//        val buffer = new StringBuffer()
+//        buffer.append(bases(rand.nextInt(5)))
+//        buffer.append(bases(rand.nextInt(5)))
+//        Some(buffer.toString)
+        Some(rand.nextInt(25))
       }
       else {
         Some(rand.nextInt(100))

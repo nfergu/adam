@@ -65,6 +65,11 @@ class Observation(val total: Long, val mismatches: Long) extends Serializable {
   override def toString: String =
     "%s / %s (%s)".format(mismatches, total, empiricalQuality)
 
+  def toCsv: String = {
+    val parts = Seq(total, mismatches)
+    parts.mkString(", ")
+  }
+
   override def equals(other: Any): Boolean = other match {
     case that: Observation => this.total == that.total && this.mismatches == that.mismatches
     case _                 => false
@@ -147,7 +152,13 @@ class ObservationAccumulator(val space: CovariateSpace) extends Serializable {
   }
 
   def accum(key: CovariateKey, value: Observation): ObservationAccumulator = {
-    entries(key) = value + entries.getOrElse(key, Observation.empty)
+    var existing = entries.get(key)
+    if (existing == null) {
+      existing = Observation.empty
+      entries.put(key, existing)
+    }
+    existing.+(value)
+//    entries(key) = value + entries.getOrElse(key, Observation.empty)
     this
   }
 

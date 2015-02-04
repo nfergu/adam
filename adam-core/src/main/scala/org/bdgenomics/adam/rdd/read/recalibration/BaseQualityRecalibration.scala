@@ -18,8 +18,9 @@
 package org.bdgenomics.adam.rdd.read.recalibration
 
 import java.io._
+import org.apache.spark
 import org.apache.spark.SparkContext._
-import org.apache.spark.Logging
+import org.apache.spark.{rdd, Logging}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.rdd.ADAMContext._
@@ -28,6 +29,7 @@ import org.bdgenomics.adam.rich.DecadentRead
 import org.bdgenomics.adam.rich.DecadentRead._
 import org.bdgenomics.adam.util.QualityScore
 import org.bdgenomics.formats.avro.AlignmentRecord
+import org.apache.spark.rdd.MetricsContext._
 
 /**
  * The algorithm proceeds in two phases. First, we make a pass over the reads
@@ -84,9 +86,18 @@ class BaseQualityRecalibration(
   }
 
   val observed: ObservationTable = {
-    dataset.
-      map { case (key, residue) => (key, Observation(residue.isSNP)) }.
-      aggregate(ObservationAccumulator(covariates))(_ += _, _ ++= _).result
+      val array = dataset.map { case (key, residue) => (key, Observation(residue.isSNP)) }.toArray()
+      val accumulator = ObservationAccumulator(covariates)
+      val writer = new PrintWriter(new File("/tmp/obsinput"))
+      array.foreach(e => {
+        accumulator += e
+        writer.println(e._1.toCsv + "::: " + e._2.toCsv)
+//        println("ACCUMULATING: " + e)
+//        Thread.sleep(10)
+      })
+      writer.close()
+//      spark.rdd.aggregate(ObservationAccumulator(covariates))(_ += _, _ ++= _).result
+      accumulator.result
   }
 
 //  observed.entries.foreach(e => {println("Key: [" + e._1 + "]; Value = [" + e._2 + "]")})
@@ -107,28 +118,29 @@ class BaseQualityRecalibration(
 
   private def dumpVisits(filename: String) = {
     def readId(read: DecadentRead): String =
-      read.name +
-        (if (read.isNegativeRead) "-" else "+") +
-        (if (read.record.getFirstOfPair) "1" else "") +
-        (if (read.record.getSecondOfPair) "2" else "")
-
-    val readLengths =
-      input.map(read => (readId(read), read.residues.length)).collectAsMap()
-
-    val visited = dataset.
-      map { case (key, residue) => (readId(residue.read), Seq(residue.offset)) }.
-      reduceByKeyLocally((left, right) => left ++ right)
-
-    val outf = new java.io.File(filename)
-    val writer = new java.io.PrintWriter(outf)
-    visited.foreach {
-      case (readName, visited) =>
-        val length = readLengths(readName)
-        val buf = Array.fill[Char](length)('O')
-        visited.foreach { idx => buf(idx) = 'X' }
-        writer.println(readName + "\t" + String.valueOf(buf))
-    }
-    writer.close()
+//      read.name +
+//        (if (read.isNegativeRead) "-" else "+") +
+//        (if (read.record.getFirstOfPair) "1" else "") +
+//        (if (read.record.getSecondOfPair) "2" else "")
+//
+//    val readLengths =
+//      input.map(read => (readId(read), read.residues.length)).collectAsMap()
+//
+//    val visited = dataset.
+//      map { case (key, residue) => (readId(residue.read), Seq(residue.offset)) }.
+//      reduceByKeyLocally((left, right) => left ++ right)
+//
+//    val outf = new java.io.File(filename)
+//    val writer = new java.io.PrintWriter(outf)
+//    visited.foreach {
+//      case (readName, visited) =>
+//        val length = readLengths(readName)
+//        val buf = Array.fill[Char](length)('O')
+//        visited.foreach { idx => buf(idx) = 'X' }
+//        writer.println(readName + "\t" + String.valueOf(buf))
+//    }
+//    writer.close()
+""
   }
 }
 
