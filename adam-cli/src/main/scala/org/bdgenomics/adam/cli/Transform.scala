@@ -28,7 +28,7 @@ import org.bdgenomics.adam.rdd.ADAMSaveAnyArgs
 import org.bdgenomics.adam.rdd.read.AlignmentRecordContext._
 import org.bdgenomics.adam.rdd.variation.VariationContext._
 import org.bdgenomics.adam.rich.RichVariant
-import org.bdgenomics.formats.avro.AlignmentRecord
+import org.bdgenomics.formats.avro.{ Variant, AlignmentRecord }
 import org.kohsuke.args4j.{ Argument, Option => Args4jOption }
 
 object Transform extends ADAMCommandCompanion {
@@ -161,7 +161,14 @@ class Transform(protected val args: TransformArgs) extends ADAMSparkCommand[Tran
   }
 
   private def createKnownSnpsTable(sc: SparkContext): SnpTable = CreateKnownSnpsTable.time {
-    val variants: RDD[RichVariant] = sc.adamVCFLoad(args.knownSnpsFile).map(_.variant)
+    val variants: RDD[RichVariant] =
+      if (args.knownSnpsFile.endsWith(".adam")) {
+        val adamGTs: RDD[Variant] = sc.adamLoad(args.knownSnpsFile)
+        printf("Loaded %d variant records", adamGTs.count())
+        adamGTs.map(new RichVariant(_))
+      } else {
+        sc.adamVCFLoad(args.knownSnpsFile).map(_.variant)
+      }
     SnpTable(variants)
   }
 

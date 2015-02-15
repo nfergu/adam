@@ -17,6 +17,7 @@
  */
 package org.bdgenomics.adam.rdd.read.recalibration
 
+import org.bdgenomics.adam.instrumentation.Timers._
 import org.bdgenomics.adam.rich.DecadentRead
 import org.bdgenomics.adam.util.QualityScore
 import org.bdgenomics.adam.util.Util
@@ -98,7 +99,7 @@ class CovariateKey(
  */
 class CovariateSpace(val extras: IndexedSeq[Covariate]) extends Serializable {
   // Computes the covariate values for all residues in this read
-  def apply(read: DecadentRead): Seq[CovariateKey] = {
+  def apply(read: DecadentRead): Seq[CovariateKey] = ComputeCovariates.time {
     // Ask each 'extra' covariate to compute its values for this read
     val extraVals = extras.map(cov => {
       val result = cov(read)

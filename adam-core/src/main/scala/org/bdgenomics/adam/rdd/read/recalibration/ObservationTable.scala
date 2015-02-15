@@ -17,10 +17,15 @@
  */
 package org.bdgenomics.adam.rdd.read.recalibration
 
+import org.apache.spark.broadcast.Broadcast
 import org.bdgenomics.adam.instrumentation.Timers._
+import org.bdgenomics.adam.models.SnpTable
+import org.bdgenomics.adam.rich.DecadentRead
+import org.bdgenomics.adam.rich.DecadentRead._
 import org.bdgenomics.adam.util.QualityScore
 import org.bdgenomics.adam.util.Util
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * An empirical frequency count of mismatches from the reference.
@@ -116,7 +121,7 @@ class ObservationTable(
 
   // `func' computes the aggregation key
   def aggregate[K](func: (CovariateKey, Observation) => K): Map[K, Aggregate] = {
-    val grouped = entries.groupBy { case (key, value) => func(key, value) }
+    val grouped: Map[K, Map[CovariateKey, Observation]] = entries.groupBy { case (key, value) => func(key, value) }
     val newEntries = grouped.mapValues(bucket =>
       bucket.map { case (oldKey, obs) => Aggregate(oldKey, obs) }.fold(Aggregate.empty)(_ + _))
     newEntries.toMap
@@ -136,12 +141,43 @@ class ObservationTable(
   def csvHeader: Seq[String] = space.csvHeader ++ Seq("TotalCount", "MismatchCount", "EmpiricalQ", "IsSkipped")
 }
 
-class ObservationAccumulator(val space: CovariateSpace) extends Serializable {
+class ObservationAccumulator(val space: CovariateSpace, val knownSnps: Broadcast[SnpTable]) extends Serializable {
   private val entries = mutable.HashMap[CovariateKey, Observation]()
 
-  def +=(that: (CovariateKey, Observation)): ObservationAccumulator = ObservationAccumulatorSeq.time {
-    accum(that._1, that._2)
+  def getExtraValues(read: DecadentRead): IndexedSeq[Seq[Option[Covariate#Value]]] = ComputeCovariates.time {
+    space.extras.map(extra => {extra(read)})
   }
+
+  def shouldIncludeRead(read: DecadentRead) =
+    read.isCanonicalRecord &&
+      read.alignmentQuality.exists(_ > QualityScore.zero) &&
+      read.passedQualityChecks
+
+  def shouldIncludeResidue(residue: Residue) =
+    residue.quality > QualityScore.zero &&
+      residue.isRegularBase &&
+      !residue.isInsertion &&
+      !knownSnps.value.isMasked(residue)
+
+  def +=(that: DecadentRead): ObservationAccumulator = ObservationAccumulatorSeq.time {
+    if (shouldIncludeRead(that)) {
+      val extraValues = getExtraValues(that)
+      that.residues.zipWithIndex.foreach(residueEntry => {
+        if (shouldIncludeResidue(residueEntry._1)) {
+          val extraValuesForResidue = extraValues.map(valuesForExtra => {
+            valuesForExtra(residueEntry._2)
+          })
+          val key = new CovariateKey(that.readGroup, residueEntry._1.quality, extraValuesForResidue)
+          accum(key, Observation(residueEntry._1.isSNP))
+        }
+      })
+    }
+    this
+  }
+
+//  def +=(that: (CovariateKey, Observation)): ObservationAccumulator = ObservationAccumulatorSeq.time {
+//    accum(that._1, that._2)
+//  }
 
   def ++=(that: ObservationAccumulator): ObservationAccumulator = ObservationAccumulatorComb.time {
     if (this.space != that.space)
@@ -159,5 +195,5 @@ class ObservationAccumulator(val space: CovariateSpace) extends Serializable {
 }
 
 object ObservationAccumulator {
-  def apply(space: CovariateSpace) = new ObservationAccumulator(space)
+  def apply(space: CovariateSpace, knownSnps: Broadcast[SnpTable]) = new ObservationAccumulator(space, knownSnps)
 }

@@ -52,24 +52,14 @@ class BaseQualityRecalibration(
   // Debug: Log the visited/skipped residues to bqsr-visits.dump
   val enableVisitLogging = false
 
-  val dataset: RDD[(CovariateKey, Residue)] = {
-    def shouldIncludeRead(read: DecadentRead) =
-      read.isCanonicalRecord &&
-        read.alignmentQuality.exists(_ > QualityScore.zero) &&
-        read.passedQualityChecks
+  val dataset: RDD[(CovariateKey, Residue)] = null
 
-    def shouldIncludeResidue(residue: Residue) =
-      residue.quality > QualityScore.zero &&
-        residue.isRegularBase &&
-        !residue.isInsertion &&
-        !knownSnps.value.isMasked(residue)
-
-    def observe(read: DecadentRead): Seq[(CovariateKey, Residue)] =
-      covariates(read).zip(read.residues).
-        filter { case (key, residue) => shouldIncludeResidue(residue) }
-
-    input.filter(shouldIncludeRead).flatMap(observe)
-  }
+//  {
+//    def observe(read: DecadentRead): Seq[(CovariateKey, Residue)] =
+//      covariates(read).zip(read.residues).
+//        filter { case (key, residue) => shouldIncludeResidue(residue) }
+//    input.filter(shouldIncludeRead).flatMap(observe)
+//  }
 
   if (enableVisitLogging) {
     input.cache()
@@ -78,9 +68,7 @@ class BaseQualityRecalibration(
   }
 
   val observed: ObservationTable = {
-    dataset.
-      map { case (key, residue) => (key, Observation(residue.isSNP)) }.
-      aggregate(ObservationAccumulator(covariates))(_ += _, _ ++= _).result
+    input.aggregate(ObservationAccumulator(covariates, knownSnps))(_ += _, _ ++= _).result
   }
 
   dumpObservationTableFile.foreach(p => {
